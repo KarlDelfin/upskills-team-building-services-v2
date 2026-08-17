@@ -55,7 +55,10 @@ export const useBookingStore = defineStore('booking', {
     upcomingBookings: [] as Booking[],
     loading: false as boolean,
     searchQuery: '' as string,
-    formTitle: 'Create Booking' as string,
+    title: 'Create Booking' as string,
+    dialog: {
+      booking: false
+    },
 
     metrics: {
       totalBookings: 0,
@@ -269,11 +272,11 @@ export const useBookingStore = defineStore('booking', {
           noOfParticipants: this.bookingForm.noOfParticipants
         }
 
-        if (this.formTitle === 'Create Booking') {
+        if (this.title === 'Create Booking') {
           const { error } = await supabase.from('Booking').insert(payload)
           if (error) throw error
           ElMessage.success('Booking created successfully.')
-        } else if (this.formTitle === 'Edit Booking') {
+        } else if (this.title === 'Edit Booking') {
           const { error } = await supabase
             .from('Booking')
             .update(payload)
@@ -345,6 +348,41 @@ export const useBookingStore = defineStore('booking', {
     resetSearch() {
       this.searchQuery = ''
       this.pagination.currentPage = 1
-    }
+    },
+
+    async formController(title: string, data: Booking) {
+      try {
+        this.title = title
+        this.dialog.booking = true
+        this.bookingStore.loading = true
+
+        await Promise.all([this.bookingStore.getServices(''), this.bookingStore.getTimeSlots()])
+
+        if (title === 'Create Booking') {
+          this.bookingStore.clear()
+          const pendingStatus = this.bookingStore.statuses.find(s => s.name?.toLowerCase() === 'pending')
+          if (pendingStatus) this.bookingStore.bookingForm.statusId = pendingStatus.id
+        } else if (title === 'Edit Booking' && data) {
+          this.bookingStore.bookingForm = {
+            id: data.id || '',
+            serviceId: data.Service?.id || data.serviceId || '',
+            statusId: data.Status?.id || data.statusId || '',
+            timeSlotId: data.timeSlotId || '',
+            bookingDate: data.bookingDate || '',
+            fullName: data.fullName || '',
+            email: data.email || '',
+            phone: data.phone || '',
+            noOfParticipants: data.noOfParticipants || 1
+          }
+
+          const datePart = moment(data.bookingDate).format('YYYY-MM-DD')
+          await this.handleSelectDate({ date: datePart })
+        }
+      } catch (error: any) {
+        console.error(error)
+      } finally {
+        this.bookingStore.loading = false
+      }
+    },
   }
 })

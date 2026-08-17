@@ -50,7 +50,7 @@
             type="primary" 
             color="#136cb3" 
             class="custom-btn-primary !font-semibold !w-full sm:!w-auto" 
-            @click="openForm('Create Booking')"
+            @click="bookingStore.formController('Create Booking')"
           >
             Create Booking
           </el-button>
@@ -149,7 +149,7 @@
                     type="primary" 
                     link 
                     class="!text-[#136cb3] !font-bold !px-1"
-                    @click="openForm('Edit Booking', scope.row)"
+                    @click="bookingStore.formController('Edit Booking', scope.row)"
                   >
                     Edit
                   </el-button>
@@ -458,40 +458,6 @@ export default {
       }
     },
 
-    async openForm(title: string, data?: Partial<Booking>): Promise<void> {
-      try {
-        this.bookingStore.title = title
-        this.bookingStore.dialog.booking = true
-        this.bookingStore.loading = true
-
-        await Promise.all([this.serviceStore.fetchServices(''), this.bookingStore.getTimeSlots()])
-
-        if (title === 'Create Booking') {
-          this.bookingStore.clear()
-          const pendingStatus = this.bookingStore.statuses.find(s => s.name?.toLowerCase() === 'pending')
-          if (pendingStatus) this.bookingStore.bookingForm.statusId = pendingStatus.id
-        } else if (title === 'Edit Booking' && data) {
-          this.bookingStore.bookingForm = {
-            id: data.id || '',
-            serviceId: data.Service?.id || data.serviceId || '',
-            statusId: data.Status?.id || data.statusId || '',
-            timeSlotId: data.timeSlotId || '',
-            bookingDate: data.bookingDate || '',
-            fullName: data.fullName || '',
-            email: data.email || '',
-            phone: data.phone || '',
-            noOfParticipants: data.noOfParticipants || 1
-          }
-
-          const datePart = moment(data.bookingDate).format('YYYY-MM-DD')
-          await this.handleSelectDate({ date: datePart })
-        }
-      } catch (error: any) {
-        console.error(error)
-      } finally {
-        this.bookingStore.loading = false
-      }
-    },
 
     clearForm(done?: (cancel?: boolean) => void): void {
       this.bookingStore.clear()
