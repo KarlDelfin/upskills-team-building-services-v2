@@ -1,120 +1,123 @@
 import { defineStore } from 'pinia'
-import { supabase } from '@/utils/supabaseClient'
-import { ElMessage } from 'element-plus'
-import gsap from 'gsap'
 import moment from 'moment'
+import { supabase } from '@/utils/supabaseClient'
+import { useBookingStatusStore, type BookingStatus } from './useBookingStatusStore'
+import { useTimeSlotStore, type BookingTimeSlot } from './useTimeSlotStore'
+import { ElMessage, ElMessageBox } from 'element-plus'
+import debounce from 'lodash/debounce';
 
-export interface ServiceItem {
-  id: string
+import { markRaw } from 'vue'
+import { Delete } from '@element-plus/icons-vue'
+
+export interface BookingService {
+  id: string | number
   name: string
   description?: string
-  dateTimeCreated?: string
+  price?: number | string
 }
 
-export interface StatusItem {
-  id: string
-  name: string
-}
-
-export interface TimeSlotItem {
-  id: string
-  slotTime: string
-  isActive: boolean
-  formattedTime?: string
-  disabled?: boolean
-}
-
-export interface CalendarAttribute {
-  highlight: { backgroundColor: string }
-  dates: Date
-}
-
-export interface StepItem {
-  number: number
-  title: string
-  desc: string
-}
-
-export interface BookingFormData {
-  serviceId: string
+export interface Booking {
+  id: string | number
+  serviceId: string | number
+  statusId: string | number
+  timeSlotId: string | number
   bookingDate: string
-  timeSlotId: string
-  statusId: string
   fullName: string
   email: string
   phone: string
   noOfParticipants: number
+  formattedBookingDate?: string
+  formattedSlotTime?: string
+  dateTimeCreated?: string
+  Service?: BookingService
+  Status?: BookingStatus
+  TimeSlot?: BookingTimeSlot
 }
 
-export interface BookingState {
-  sitekey: string
-  loading: boolean
-  formStep: number
-  captchaToken: string | null
-  services: ServiceItem[]
-  statuses: StatusItem[]
-  timeSlots: TimeSlotItem[]
-  vCalendarEvents: CalendarAttribute[]
-  steps: StepItem[]
-  bookingForm: BookingFormData
+export interface BookingMetrics {
+  totalBookings: number
+  pendingBookings: number
+}
+
+export interface BookingPagination {
+  currentPage: number
+  elementsPerPage: number
+  totalElements: number
 }
 
 export const useBookingStore = defineStore('booking', {
-  state: (): BookingState => ({
-    sitekey: import.meta.env.VITE_HCAPTCHA_SITE_KEY as string,
-    loading: false,
-    formStep: 1,
-    captchaToken: null,
-    services: [],
-    statuses: [],
-    timeSlots: [],
-    vCalendarEvents: [],
-    steps: [
-      { number: 1, title: 'Training Program', desc: 'Select the workshop or training service' },
-      { number: 2, title: 'Schedule', desc: 'Choose your preferred date and time' },
-      { number: 3, title: 'Organization Details', desc: 'Provide your contact and company information' }
-    ],
+
+  state: () => ({
+    bookings: [] as Booking[],
+    services: [] as BookingService[],
+    statuses: [] as BookingStatus[],
+    timeSlots: [] as BookingTimeSlot[],
+    upcomingBookings: [] as Booking[],
+    loading: false as boolean,
+    searchQuery: '' as string,
+    formTitle: 'Create Booking' as string,
+
+    metrics: {
+      totalBookings: 0,
+      pendingBookings: 0
+    } as BookingMetrics,
+
     bookingForm: {
-      serviceId: '',
-      bookingDate: '',
-      timeSlotId: '',
-      statusId: '',
-      fullName: '',
-      email: '',
-      phone: '',
-      noOfParticipants: 1
-    }
+      id: '' as string | number,
+      serviceId: '' as string | number,
+      statusId: '' as string | number,
+      timeSlotId: '' as string | number,
+      bookingDate: '' as string,
+      fullName: '' as string,
+      email: '' as string,
+      phone: '' as string,
+      noOfParticipants: 1 as number
+    },
+
+    pagination: {
+      currentPage: 1,
+      elementsPerPage: 5,
+      totalElements: 0
+    } as BookingPagination
   }),
 
   actions: {
-    setCaptchaToken(token: string | null): void {
-      this.captchaToken = token
-    },
+     /* SEARCH BOOKING */
+    searchBookingStatus: debounce(function(this: any) {
+        this.fetchBookings()
+    }, 300),
 
-    async fetchInitialData(): Promise<void> {
-      await Promise.all([
-        this.getServices(),
-        this.getStatuses(),
-        this.getTimeSlots()
-      ])
-    },
-
-    async getStatuses(): Promise<void> {
+    async fetchDashboardData() {
+      this.loading = true
+      const statusStore = useBookingStatusStore()
+      const timeSlotStore = useTimeSlotStore()
       try {
-        const { data, error } = await supabase.from('Status').select('*')
-        if (error) throw error
-        this.statuses = (data as StatusItem[]) || []
-
-        const pendingStatus = this.statuses.find(s => s.name?.toLowerCase() === 'pending')
-        if (pendingStatus) {
-          this.bookingForm.statusId = pendingStatus.id
-        }
-      } catch (err) {
-        console.error('Error fetching statuses:', err)
+        await Promise.all([
+          this.statuses = statusStore.fetchBookingStatuses(),
+          this.timeSlots = timeSlotStore.fetchTimeSlots(),
+          this.fetchBookings(),
+          this.fetchUpcomingBookings()
+        ])
+        await this.getBookingMetrics()
+      } catch (error) {
+        console.error(error)
+        ElMessage.error('Error fetching dashboard data.')
+      } finally {
+        this.loading = false
       }
     },
 
-    async getTimeSlots(): Promise<void> {
+  /*   async fetchStatuses() {
+      try {
+        const { data, error } = await supabase.from('Status').select('*')
+        if (error) throw error
+        this.statuses = data || []
+      } catch (error) {
+        console.error(error)
+      }
+    },
+
+    async fetchTimeSlots() {
       try {
         const { data, error } = await supabase
           .from('TimeSlot')
@@ -124,128 +127,137 @@ export const useBookingStore = defineStore('booking', {
 
         if (error) throw error
 
-        this.timeSlots = ((data as TimeSlotItem[]) || []).map(slot => ({
+        this.timeSlots = (data || []).map((slot: any): BookingTimeSlot => ({
           ...slot,
           formattedTime: moment(slot.slotTime, 'HH:mm:ss').format('h:mm A'),
           disabled: false
         }))
-      } catch (err) {
-        console.error('Error fetching time slots:', err)
+      } catch (error) {
+        console.error(error)
       }
     },
 
-    async getServices(): Promise<void> {
+    async fetchServices() {
       try {
-        this.loading = true
-        const { data, error } = await supabase
-          .from('Service')
-          .select('*')
-          .order('dateTimeCreated', { ascending: false })
+        let query = supabase.from('Service').select('*')
 
+        if (searchValue !== '') {
+          const searchPattern = `%${searchValue}%`
+          query = query.or(`name.ilike.${searchPattern},description.ilike.${searchPattern}`)
+        }
+
+        query = query.order('dateTimeCreated', { ascending: false })
+
+        const { data, error } = await query
         if (error) throw error
-        this.services = (data as ServiceItem[]) || []
-      } catch (err) {
-        console.error('Error fetching services:', err)
-        ElMessage.error('Failed to load training services.')
+
+        this.services = data || []
+      } catch (error) {
+        console.error(error)
+      }
+    }, */
+
+    async fetchBookings() {
+      this.loading = true
+      try {
+        const limit = this.pagination.elementsPerPage
+        const from = (this.pagination.currentPage - 1) * limit
+        const to = from + limit - 1
+
+        let query = supabase
+          .from('Booking')
+          .select(
+            `
+            *,
+            Service ( id, name, description, price ),
+            Status ( id, name, color ),
+            TimeSlot ( id, slotTime )
+            `,
+            { count: 'exact' }
+          )
+
+        if (this.searchQuery && this.searchQuery.trim() !== '') {
+          const searchPattern = `%${this.searchQuery.trim()}%`
+          query = query.or(`fullName.ilike.${searchPattern},email.ilike.${searchPattern},phone.ilike.${searchPattern}`)
+        }
+
+        query = query.order('dateTimeCreated', { ascending: false }).range(from, to)
+
+        const { data, error, count } = await query
+        if (error) throw error
+
+        this.bookings = (data || []).map((item: any): Booking => ({
+          ...item,
+          formattedBookingDate: moment(item.bookingDate).format('LL'),
+          formattedSlotTime: item.TimeSlot?.slotTime
+            ? moment(item.TimeSlot.slotTime, 'HH:mm:ss').format('h:mm A')
+            : '',
+          dateTimeCreated: moment(item.dateTimeCreated).format('LLL')
+        }))
+
+        this.pagination.totalElements = count || 0
+      } catch (error) {
+        console.error(error)
       } finally {
         this.loading = false
       }
     },
 
-    goToStep(step: number, action: 'next' | 'back'): void {
-      if (action === 'back') {
-        this.formStep = step
-        return
-      }
-
-      if (this.formStep === 1 && !this.bookingForm.serviceId) {
-        ElMessage.warning('Please select a service.')
-        return
-      }
-
-      if (this.formStep === 2) {
-        if (!this.bookingForm.bookingDate) {
-          ElMessage.warning('Please select a preferred date.')
-          return
-        }
-        if (!this.bookingForm.timeSlotId) {
-          ElMessage.warning('Please select a preferred time slot.')
-          return
-        }
-      }
-
-      this.formStep = step
-    },
-
-    handleSelectService(serviceId: string): void {
-      this.bookingForm.serviceId = serviceId
-    },
-
-    async handleSelectDate(day: { date: Date }): Promise<void> {
-      this.bookingForm.bookingDate = ''
-      this.bookingForm.timeSlotId = ''
-
-      const today = moment().startOf('day')
-      const targetDate = moment(day.date).startOf('day')
-
-      if (targetDate < today) {
-        ElMessage.warning('Cannot select a past date.')
-        return
-      }
-
-      this.bookingForm.bookingDate = targetDate.toISOString()
-
-      this.vCalendarEvents = [
-        {
-          highlight: { backgroundColor: 'var(--priColor, #3b82f6)' },
-          dates: new Date(day.date)
-        }
-      ]
-
+    async fetchUpcomingBookings() {
       try {
-        const startOfDay = targetDate.format('YYYY-MM-DD 00:00:00')
-        const endOfDay = targetDate.format('YYYY-MM-DD 23:59:59')
+        const startOfToday = moment().startOf('day').toISOString()
 
         const { data, error } = await supabase
           .from('Booking')
-          .select('timeSlotId')
-          .gte('bookingDate', startOfDay)
-          .lte('bookingDate', endOfDay)
+          .select(
+            `*,
+            TimeSlot ( id, slotTime )`
+          )
+          .gte('bookingDate', startOfToday)
+          .order('bookingDate', { ascending: true })
 
         if (error) throw error
 
-        const bookedTimeSlotIds = new Set((data || []).map((item: { timeSlotId: string }) => item.timeSlotId))
-
-        this.timeSlots = this.timeSlots.map(slot => ({
-          ...slot,
-          disabled: bookedTimeSlotIds.has(slot.id)
+        this.upcomingBookings = (data || []).map((item: any): Booking => ({
+          ...item,
+          formattedBookingDate: moment(item.bookingDate).format('MMMM DD, YYYY'),
+          formattedSlotTime: item.TimeSlot?.slotTime
+            ? moment(item.TimeSlot.slotTime, 'HH:mm:ss').format('h:mm A')
+            : ''
         }))
-      } catch (err) {
-        console.error('Error fetching booked slots:', err)
+      } catch (error) {
+        console.error(error)
       }
     },
 
-    handleSelectTime(timeSlotId: string): void {
-      this.bookingForm.timeSlotId = timeSlotId
+    async getBookingMetrics() {
+      try {
+        const pendingStatus = this.statuses.find((s: any) => s.name?.toLowerCase() === 'pending'
+        )
+
+        const [totalBookings, totalPending] = await Promise.all([
+          supabase.from('Booking').select('*', { count: 'exact', head: true }),
+          pendingStatus
+            ? supabase
+                .from('Booking')
+                .select('*', { count: 'exact', head: true })
+                .eq('statusId', pendingStatus.id)
+            : { count: 0, error: null }
+        ])
+
+        if (totalBookings.error) throw totalBookings.error
+
+        this.metrics.totalBookings = totalBookings.count || 0
+        this.metrics.pendingBookings = totalPending.count || 0
+      } catch (error) {
+        console.error(error)
+      }
     },
 
-    async submitBooking(formRef: { validate: () => Promise<boolean> } | null): Promise<void> {
+    /* CREATE / UPDATE FORM */
+    async submitForm() {
+      this.loading = true
       try {
-        if (!formRef) return
-        await formRef.validate()
-
-        if (!this.captchaToken) {
-          ElMessage.warning('Please check the security box before submitting.')
-          return
-        }
-
-        if (!this.bookingForm.statusId) {
-          const pendingStatus = this.statuses.find(s => s.name?.toLowerCase() === 'pending')
-          if (pendingStatus) this.bookingForm.statusId = pendingStatus.id
-        }
-
-        this.loading = true
-
         const payload = {
           serviceId: this.bookingForm.serviceId,
           statusId: this.bookingForm.statusId,
@@ -257,60 +269,82 @@ export const useBookingStore = defineStore('booking', {
           noOfParticipants: this.bookingForm.noOfParticipants
         }
 
-        const { error } = await supabase.from('Booking').insert(payload)
-        if (error) throw error
+        if (this.formTitle === 'Create Booking') {
+          const { error } = await supabase.from('Booking').insert(payload)
+          if (error) throw error
+          ElMessage.success('Booking created successfully.')
+        } else if (this.formTitle === 'Edit Booking') {
+          const { error } = await supabase
+            .from('Booking')
+            .update(payload)
+            .eq('id', this.bookingForm.id)
 
-        try {
-          await supabase.functions.invoke('send-booking-email', {
-            body: {
-              clientName: payload.fullName,
-              clientEmail: payload.email,
-              clientPhone: payload.phone,
-              bookingDate: payload.bookingDate,
-              timeSlotId: payload.timeSlotId,
-              noOfParticipants: payload.noOfParticipants
-            }
-          })
-        } catch (emailErr) {
-          console.error('Database saved, but email trigger failed:', emailErr)
+          if (error) throw error
+          ElMessage.success('Booking updated successfully.')
         }
 
-        ElMessage.success('Booking submitted successfully.')
-        this.clear()
-      } catch (err) {
-        console.error('Booking submission error:', err)
+        await this.fetchDashboardData()
+        return true
+      } catch (error) {
+        console.error(error)
+        ElMessage.error(error || 'Failed to save booking.')
+        return false
       } finally {
         this.loading = false
       }
     },
 
-    clear(): void {
-      const pendingStatus = this.statuses.find(s => s.name?.toLowerCase() === 'pending')
+    /* DELETE BOOKING */
+    async handleDelete(id: string | number) {
+      try {
+        this.loading = true
 
+        await ElMessageBox.confirm('Do you want to delete this booking?', 'Warning', {
+            confirmButtonText: 'OK',
+            cancelButtonText: 'Cancel',
+            type: 'warning',
+            icon: markRaw(Delete),
+        })
+
+        const { error } = await supabase
+          .from('Booking')
+          .delete()
+          .eq('id', id)
+
+        if (error) throw error
+
+        ElMessage.success('Booking deleted successfully.')
+        await this.fetchDashboardData()
+         
+      } catch (error) {
+          console.error(error)
+      } finally {
+        this.loading = false
+      }
+    },
+
+    /* CLEAR FORM */
+    clear() {
       Object.assign(this.bookingForm, {
+        id: '',
         serviceId: '',
-        bookingDate: '',
+        statusId: '',
         timeSlotId: '',
-        statusId: pendingStatus ? pendingStatus.id : '',
+        bookingDate: '',
         fullName: '',
         email: '',
         phone: '',
         noOfParticipants: 1
       })
+      this.timeSlots = this.timeSlots.map((slot: any) => ({
+        ...slot,
+        disabled: false
+      }))
+    },
 
-      this.vCalendarEvents = []
-      this.timeSlots = this.timeSlots.map(s => ({ ...s, disabled: false }))
-
-      setTimeout(() => {
-        this.formStep = 1
-      }, 500)
-
-      gsap.to('#bookingForm', {
-        opacity: 0,
-        y: window.innerHeight,
-        duration: 0.5,
-        ease: 'back.in'
-      })
+    resetSearch() {
+      this.searchQuery = ''
+      this.pagination.currentPage = 1
     }
   }
 })

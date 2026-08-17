@@ -15,6 +15,7 @@ import { useAuthStore } from './stores/useAuthStore'
 import { supabase } from './utils/supabaseClient'
 
 import VCalendar from 'v-calendar'
+import 'v-calendar/style.css';
 
 async function initApp() {
   const app = createApp(App)

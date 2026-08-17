@@ -9,7 +9,7 @@
             </div>
         </template>
 
-        <div class="mb-6 flex justify-between w-full gap-3">
+        <div class="!mb-6 flex justify-between w-full gap-3">
             <div class="w-full">
                 <el-input
                     v-model="bookingStatusStore.search"

@@ -77,6 +77,8 @@ export const useBookingStatusStore = defineStore('bookingStatus', {
                 
                 this.bookingStatusPagination.currentPage = this.bookingStatusPagination.currentPage;
                 this.bookingStatusPagination.totalElements = count || 0;
+
+                return this.bookingStatuses || []
             }
             catch(error) {
                 console.log(error)

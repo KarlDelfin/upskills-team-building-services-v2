@@ -7,14 +7,14 @@ import debounce from 'lodash/debounce';
 import { markRaw } from 'vue'
 import { Delete } from '@element-plus/icons-vue'
 
-export interface TimeSlot {
+export interface BookingTimeSlot {
     id: number,
     slotTime: string,
     isActive: boolean,
     dateTimeCreated: string,
 }
 
-export interface TimeSlotPagination {
+export interface BookingTimeSlotPagination {
     currentPage: number,
     elementsPerPage: number,
     totalElements: number,
@@ -26,13 +26,13 @@ export const useTimeSlotStore = defineStore('timeSlot', {
         loading: false as Boolean,
         search: '' as String,
 
-        timeSlots: [] as TimeSlot[],
-        timeSlotForm: {} as TimeSlot,
+        timeSlots: [] as BookingTimeSlot[],
+        timeSlotForm: {} as BookingTimeSlot,
         timeSlotPagination: {
             currentPage: 1,
             elementsPerPage: 10,
             totalElements: 0,
-        } as TimeSlotPagination,
+        } as BookingTimeSlotPagination,
 
         dialog: {
             timeSlot: false as Boolean,
@@ -68,12 +68,14 @@ export const useTimeSlotStore = defineStore('timeSlot', {
 
                 if(error) throw error
 
-                this.timeSlots = data.map((data: TimeSlot) => ({
+                this.timeSlots = data.map((data: BookingTimeSlot) => ({
                     ...data,
                     dateTimeCreated: moment(data.dateTimeCreated).format('LLL'),
                 })) || []
                 this.timeSlotPagination.currentPage = this.timeSlotPagination.currentPage;
                 this.timeSlotPagination.totalElements = count || 0;
+
+                return this.timeSlots
             }
             catch(error) {
                 console.log(error)
