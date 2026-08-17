@@ -40,11 +40,12 @@ export const useTimeSlotStore = defineStore('timeSlot', {
 
     }),
     actions: {
-        searchTimeSlot: debounce(function(this: any) {
+        /* SEARCH TIME SLOT */
+        /* searchTimeSlot: debounce(function(this: any) {
             this.fetchTimeSlots()
-        }, 300),
+        }, 300), */
         
-        /* GET PRODUCT WITH SEARCH */
+        /* GET TIME SLOT WITH SEARCH */
         async fetchTimeSlots() {
             try {
                 this.loading = true
@@ -57,9 +58,9 @@ export const useTimeSlotStore = defineStore('timeSlot', {
                     .from('TimeSlot')
                     .select('*', { count: 'exact' })
 
-                if (this.search && this.search.trim() !== '') {
-                    query = query.ilike('name', `%${this.search}%`);
-                }
+                /* if (this.search && this.search.trim() !== '') {
+                    query = query.ilike('slotTime', `%${this.search}%`);
+                } */
 
                 query = query.order('dateTimeCreated', { ascending: false }).range(from, to);
 
@@ -82,10 +83,10 @@ export const useTimeSlotStore = defineStore('timeSlot', {
             }
         },
 
-        /* DELETE PRODUCT */
-        async deleteTimeSlot(id: number) {
+        /* DELETE */
+        async deleteTimeSlot(id: string) {
             try {
-                await ElMessageBox.confirm('Do you want to delete this timeSlot?', 'Warning', {
+                await ElMessageBox.confirm('Do you want to delete this time slot?', 'Warning', {
                     confirmButtonText: 'OK',
                     cancelButtonText: 'Cancel',
                     type: 'warning',
@@ -168,13 +169,13 @@ export const useTimeSlotStore = defineStore('timeSlot', {
         },
 
         /* DIALOG CONTROLLER */
-        formController(action: string, timeSlot: any) {
-            this.title = action
+        formController(title: string, timeSlot: any) {
+            this.title = title
             this.dialog.timeSlot = true
 
-            if(action == "Created Time Slot") {}
+            if(title == "Created Time Slot") {}
 
-            if(action == "Edit Time Slot") {
+            if(title == "Edit Time Slot") {
                 this.timeSlotForm = { ...timeSlot }
             }
         },

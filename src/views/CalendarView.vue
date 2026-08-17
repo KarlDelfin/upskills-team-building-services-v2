@@ -1,15 +1,23 @@
 <template>
-  <div class="!p-3 sm:!p-6 !bg-white !rounded-2xl !shadow-lg !font-sans !w-full !max-w-full !overflow-hidden">
-    <!-- Main Calendar Component -->
-    <div class="calendar-wrapper !w-full !overflow-x-auto">
-      <FullCalendar ref="calendarRef" :options="calendarOptions" v-loading="store.loading" />
+  <div class="p-3 sm:p-6 bg-white rounded-2xl shadow-lg font-sans w-full min-h-[600px] block">
+    <!-- Parent wrapper with explicit dimensions -->
+    <div 
+      v-loading="store.loading" 
+      element-loading-text="Loading calendar events..."
+      class="w-full min-h-[550px] relative"
+    >
+      <FullCalendar 
+        v-if="isMounted"
+        ref="calendarRef" 
+        :options="calendarOptions as any" 
+      />
     </div>
 
     <!-- Booking Details Dialog -->
     <el-dialog 
       v-model="detailsDialogVisible" 
       title="Booking Details" 
-      class="!w-[92vw] sm:!w-[440px] !max-w-[440px] !rounded-2xl" 
+      class="!w-[92vw] sm:!w-[440px] !max-w-[440px]" 
       center 
       destroy-on-close
     >
@@ -73,11 +81,11 @@
       </template>
     </el-dialog>
 
-    <!-- Reschedule / Drag & Drop Select Time Slot Dialog -->
+    <!-- Reschedule Dialog -->
     <el-dialog
       v-model="rescheduleDialogVisible"
       title="Select Time Slot"
-      class="!w-[92vw] sm:!w-[440px] !max-w-[440px] !rounded-2xl"
+      class="!w-[92vw] sm:!w-[440px] !max-w-[440px]"
       center
       :before-close="handleRescheduleCancel"
     >
@@ -130,16 +138,18 @@
 </template>
 
 <script lang="ts">
+
+import { markRaw } from 'vue' // <-- Add markRaw import
 import FullCalendar from '@fullcalendar/vue3'
-import rrulePlugin from '@fullcalendar/rrule'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
-import list from '@fullcalendar/list'
+import listPlugin from '@fullcalendar/list'
+import rrulePlugin from '@fullcalendar/rrule'
 import moment from 'moment'
 import { ElMessage } from 'element-plus'
-import { useCalendarStore } from '@/stores/useCalendarStore'
-import { supabase } from '@/utils/supabaseClient' // Added direct client import for updates
+import { useCalendarStore, type CalendarEvent } from '@/stores/useCalendarStore'
+import { supabase } from '@/utils/supabaseClient'
 
 export default {
   name: 'CalendarView',
@@ -151,152 +161,87 @@ export default {
     return { store }
   },
   data() {
-    return {
-      detailsDialogVisible: false,
-      selectedBooking: null,
+    const vm = this as any
 
-      // Reschedule / Slot State Variables
+    return {
+      isMounted: false,
+      detailsDialogVisible: false,
+      selectedBooking: null as any,
       rescheduleDialogVisible: false,
       savingReschedule: false,
-      pendingDropInfo: null,
+      pendingDropInfo: null as any,
       targetDate: '',
-      selectedSlotId: null,
+      selectedSlotId: null as number | string | null,
 
-      weekClicked: false,
-      dayClicked: false,
-      pickerKey: 0,
-      today: new Date(),
-      calendarOptions: {
-        height: 'auto',
-        aspectRatio: 1.35,
-        plugins: [dayGridPlugin, interactionPlugin, timeGridPlugin, list, rrulePlugin],
+      // Wrap calendarOptions inside markRaw()
+      calendarOptions: markRaw({
+        height: '650px',
+        contentHeight: 600,
+        expandRows: true,
+        handleWindowResize: true,
+        plugins: [dayGridPlugin, interactionPlugin, timeGridPlugin, listPlugin, rrulePlugin],
         timeZone: 'UTC',
         editable: true,
         eventStartEditable: true,
         eventDurationEditable: false,
-        views: {
-          dayGridMonth: {
-            dayMaxEventRows: 2,
-            titleFormat: { year: 'numeric', month: 'short' }
-          },
-          timeGridWeek: {
-            slotLabelFormat: {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            },
-            eventTimeFormat: {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            }
-          },
-          timeGridDay: {
-            slotLabelFormat: {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            }
-          },
-          listMonth: {
-            eventTimeFormat: {
-              hour: '2-digit',
-              minute: '2-digit',
-              hour12: false
-            }
-          }
-        },
+        initialView: 'dayGridMonth',
         headerToolbar: {
           start: 'prevCustom,todayCustom,nextCustom refreshCustom',
           center: 'title',
           end: 'monthCustom,weekCustom,dayCustom,listCustom'
         },
         customButtons: {
-          todayCustom: {
-            text: 'today',
-            click: () => this.handleTodayClick()
-          },
-          prevCustom: {
-            text: '«',
-            click: () => this.handlePrevClick()
-          },
-          nextCustom: {
-            text: '»',
-            click: () => this.handleNextClick()
-          },
-          refreshCustom: {
-            text: 'Refresh',
-            click: () => this.handleRefreshClick()
-          },
-          monthCustom: {
-            text: 'month',
-            click: () => this.handleMonthClick()
-          },
-          weekCustom: {
-            text: 'week',
-            click: () => this.handleWeekClick()
-          },
-          dayCustom: {
-            text: 'day',
-            click: () => this.handleDayClick()
-          },
-          listCustom: {
-            text: 'list',
-            click: () => this.handleListClick()
-          }
+          todayCustom: { text: 'today', click: () => vm.handleTodayClick() },
+          prevCustom: { text: '«', click: () => vm.handlePrevClick() },
+          nextCustom: { text: '»', click: () => vm.handleNextClick() },
+          refreshCustom: { text: '⟲ Refresh', click: () => vm.handleRefreshClick() },
+          monthCustom: { text: 'month', click: () => vm.handleMonthClick() },
+          weekCustom: { text: 'week', click: () => vm.handleWeekClick() },
+          dayCustom: { text: 'day', click: () => vm.handleDayClick()},
+          listCustom: { text: 'list', click: () => vm.handleListClick() }
         },
-        events: [],
+        events: [] as CalendarEvent[],
         firstDay: 0,
-        initialView: 'dayGridMonth',
         eventClick: this.handleEventClick,
         eventDrop: this.handleEventDrop,
         datesSet: this.handleDatesSet,
         allDaySlot: false,
-        eventLongPressDelay: 50,
         eventOverlap: true,
-        forceEventDuration: true,
-        displayEventTime: true,
-        showNonCurrentDates: false
-      }
+        displayEventTime: true
+      })
     }
   },
   mounted() {
-    this.calendarOptions.customButtons.todayCustom.click = this.handleTodayClick.bind(this)
-    this.calendarOptions.customButtons.prevCustom.click = this.handlePrevClick.bind(this)
-    this.calendarOptions.customButtons.nextCustom.click = this.handleNextClick.bind(this)
-    this.calendarOptions.customButtons.refreshCustom.click = this.handleRefreshClick.bind(this)
-    this.calendarOptions.customButtons.monthCustom.click = this.handleMonthClick.bind(this)
-    this.calendarOptions.customButtons.weekCustom.click = this.handleWeekClick.bind(this)
-    this.calendarOptions.customButtons.dayCustom.click = this.handleDayClick.bind(this)
-    this.calendarOptions.customButtons.listCustom.click = this.handleListClick.bind(this)
+    this.isMounted = true
+    this.$nextTick(() => {
+      setTimeout(() => {
+        if (this.calendarApi) {
+          this.calendarApi.updateSize()
+        }
+      }, 100)
+    })
   },
   computed: {
-    calendarApi() {
-      return this.$refs.calendarRef ? this.$refs.calendarRef.getApi() : null
+    calendarApi(): any {
+      return (this.$refs.calendarRef as any) ? (this.$refs.calendarRef as any).getApi() : null
     },
-    targetDateFormatted() {
+    targetDateFormatted(): string {
       return this.targetDate ? moment(this.targetDate).format('MMMM DD, YYYY') : ''
     }
   },
   methods: {
-    /* REFRESH CURRENT CALENDAR VIEW RANGE */
     async handleRefreshClick() {
       if (this.calendarApi) {
         const currentView = this.calendarApi.view
-        const startDate = currentView.activeStart.toISOString()
-        const endDate = currentView.activeEnd.toISOString()
-
-        await this.loadBookings(startDate, endDate)
+        await this.loadBookings(currentView.activeStart.toISOString(), currentView.activeEnd.toISOString())
       }
     },
 
-    /* AUTOMATIC DATES RANGE CHANGE HOOK */
-    async handleDatesSet(dateInfo) {
+    async handleDatesSet(dateInfo: any) {
       await this.loadBookings(dateInfo.startStr, dateInfo.endStr)
     },
 
-    /* OPEN DETAILS DIALOG ON EVENT CLICK AND LOAD TIME SLOTS */
-    async handleEventClick(info) {
+    async handleEventClick(info: any) {
       this.selectedBooking = info.event
       this.selectedSlotId = info.event.extendedProps.timeSlotId
       this.detailsDialogVisible = true
@@ -305,16 +250,14 @@ export default {
       await this.store.loadTimeSlotsForTargetDate(dateStr, info.event.id)
     },
 
-    /* LOCAL COMPONENT MUTATION: UPDATE TIME SLOT */
-    async handleSlotChange(newSlotId) {
+    async handleSlotChange(newSlotId: number | string | null) {
       if (!this.selectedBooking || !newSlotId) return
 
-      const bookingId = this.selectedBooking.id
       try {
         const { error } = await supabase
           .from('Booking')
           .update({ timeSlotId: newSlotId })
-          .eq('id', bookingId)
+          .eq('id', this.selectedBooking.id)
 
         if (error) throw error
 
@@ -328,28 +271,24 @@ export default {
       }
     },
 
-    /* DRAG & DROP INTERCEPTION & SLOT DIALOG TRIGGER */
-    async handleEventDrop(info) {
-      if (new Date(info.event.startStr) < new Date().setHours(0, 0, 0, 0)) {
+    async handleEventDrop(info: any) {
+      if (new Date(info.event.startStr) < new Date(new Date().setHours(0, 0, 0, 0))) {
         ElMessage.warning('Cannot move booking on past dates.')
         info.revert()
         return
       }
       this.pendingDropInfo = info
-      this.selectedSlotId = ''
+      this.selectedSlotId = null
       this.targetDate = moment(info.event.start).format('YYYY-MM-DD')
       this.rescheduleDialogVisible = true
 
       await this.store.loadTimeSlotsForTargetDate(this.targetDate, info.event.id)
     },
 
-    /* LOCAL COMPONENT MUTATION: CONFIRM RESCHEDULE */
     async confirmReschedule() {
       if (!this.selectedSlotId || !this.pendingDropInfo) return
 
       this.savingReschedule = true
-      const bookingId = this.pendingDropInfo.event.id
-
       try {
         const { error } = await supabase
           .from('Booking')
@@ -357,7 +296,7 @@ export default {
             bookingDate: this.targetDate,
             timeSlotId: this.selectedSlotId
           })
-          .eq('id', bookingId)
+          .eq('id', this.pendingDropInfo.event.id)
 
         if (error) throw error
 
@@ -375,7 +314,6 @@ export default {
       }
     },
 
-    /* CANCEL RESCHEDULE AND REVERT EVENT POSITION */
     handleRescheduleCancel() {
       if (this.pendingDropInfo) {
         this.pendingDropInfo.revert()
@@ -385,135 +323,54 @@ export default {
       this.targetDate = ''
     },
 
-    /* LOAD BOOKINGS FROM STORE */
-    async loadBookings(startDate, endDate) {
+    async loadBookings(startDate: string, endDate: string) {
       const events = await this.store.fetchCalendarEvents(startDate, endDate)
       this.updateCalendarSource(events)
     },
 
-    /* SYNC CALENDAR EVENTS FROM CURRENT STORE STATE */
     async syncCalendarEvents() {
       if (this.calendarApi) {
-        const events = this.store.bookings
-        this.updateCalendarSource(events)
+        this.updateCalendarSource(this.store.bookings)
       }
     },
 
-    /* HELPER TO REFRESH EVENT SOURCE IN FULLCALENDAR */
-    updateCalendarSource(events) {
+    updateCalendarSource(events: CalendarEvent[]) {
       if (this.calendarApi) {
         this.calendarApi.removeAllEventSources()
         this.calendarApi.addEventSource(events)
       } else {
-        this.calendarOptions = {
-          ...this.calendarOptions,
-          events
-        }
+        this.calendarOptions.events = events
       }
     },
 
-    /* DATE FORMATTER HELPER */
-    formatBookingTime(dateString) {
-      if (!dateString) return ''
-      return moment(dateString).format('MMMM DD, YYYY')
+    formatBookingTime(dateString: string | Date) {
+      return dateString ? moment(dateString).format('MMMM DD, YYYY') : ''
     },
 
-    /* NAVIGATION BUTTON HANDLERS */
-    handleTodayClick() {
-      this.pickerKey++
-      this.today = new Date()
-      this.calendarApi?.today()
-    },
-
-    handlePrevClick() {
-      this.pickerKey++
-      this.calendarApi?.prev()
-    },
-
-    handleNextClick() {
-      this.pickerKey++
-      this.calendarApi?.next()
-    },
-
-    handleMonthClick() {
-      this.weekClicked = false
-      this.dayClicked = false
-      this.calendarApi?.changeView('dayGridMonth')
-    },
-
-    handleWeekClick() {
-      this.weekClicked = true
-      this.dayClicked = false
-      this.calendarApi?.changeView('timeGridWeek')
-    },
-
-    handleDayClick() {
-      this.weekClicked = false
-      this.dayClicked = true
-      this.calendarApi?.changeView('timeGridDay')
-    },
-
-    handleListClick() {
-      this.calendarApi?.changeView('listMonth')
-    }
-  },
+    handleTodayClick() { this.calendarApi?.today() },
+    handlePrevClick() { this.calendarApi?.prev() },
+    handleNextClick() { this.calendarApi?.next() },
+    handleMonthClick() { this.calendarApi?.changeView('dayGridMonth') },
+    handleWeekClick() { this.calendarApi?.changeView('timeGridWeek') },
+    handleDayClick() { this.calendarApi?.changeView('timeGridDay') },
+    handleListClick() { this.calendarApi?.changeView('listMonth') }
+  }
 }
 </script>
 
 <style scoped>
+:deep(.fc) {
+  min-height: 550px !important;
+  width: 100% !important;
+}
+
+:deep(.fc-view-harness) {
+  min-height: 500px !important;
+}
+
 :deep(.fc-event) {
   border-radius: 6px !important;
   border: none !important;
-  background-color: transparent !important;
   cursor: pointer;
-}
-
-:deep(.fc-event-main) {
-  padding: 0 !important;
-  background-color: transparent !important;
-}
-
-:deep(.fc-h-event) {
-  background-color: transparent !important;
-  border: none !important;
-}
-
-/* FullCalendar Header Responsiveness Overrides */
-:deep(.fc-header-toolbar) {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  gap: 8px !important;
-  justify-content: space-between !important;
-  align-items: center !important;
-  margin-bottom: 1rem !important;
-}
-
-:deep(.fc-toolbar-chunk) {
-  display: flex !important;
-  align-items: center !important;
-  gap: 4px !important;
-  flex-wrap: wrap !important;
-}
-
-@media (max-width: 640px) {
-  :deep(.fc-header-toolbar) {
-    flex-direction: column !important;
-    align-items: stretch !important;
-  }
-
-  :deep(.fc-toolbar-chunk) {
-    justify-content: center !important;
-    width: 100% !important;
-  }
-
-  :deep(.fc-toolbar-title) {
-    font-size: 1.1rem !important;
-    text-align: center !important;
-  }
-
-  :deep(.fc-button) {
-    padding: 0.25rem 0.5rem !important;
-    font-size: 0.75rem !important;
-  }
 }
 </style>

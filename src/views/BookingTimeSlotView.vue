@@ -3,14 +3,14 @@
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold m-0">Time Slot Management</h2>
-                    <p class="text-xs m-0 mt-1">Manage booking time slots</p>
+                    <h2 class="!text-xl !font-bold !m-0">Time Slot Management</h2>
+                    <p class="!text-xs !m-0 !mt-1">Configure available daily time schedules and capacity for client appointments</p>
                 </div>
             </div>
         </template>
 
-        <div class="mb-6 flex justify-between w-full gap-3">
-            <div class="w-full">
+        <div class="mb-6 flex justify-end w-full gap-3">
+            <!-- <div class="w-full">
                 <el-input
                     v-model="timeSlotStore.search"
                     @input="timeSlotStore.searchTimeSlot" 
@@ -18,7 +18,7 @@
                     :prefix-icon="Search"
                     clearable
                 />
-            </div>
+            </div> -->
 
             <div class="flex items-center justify-end">
                 <el-button 
@@ -72,7 +72,7 @@
                           class="custom-btn-edit" 
                           @click="timeSlotStore.formController('Edit Time Slot', scope.row)"
                       >
-                          <el-icon class="mr-1"><Edit /></el-icon> Edit
+                          <el-icon class="!mr-1"><Edit /></el-icon> Edit
                       </el-button>
                       <el-button 
                           size="small" 
@@ -80,7 +80,7 @@
                           plain
                           @click="timeSlotStore.deleteTimeSlot(scope.row.id)"
                       >
-                          <el-icon class="mr-1"><Delete /></el-icon> Delete
+                          <el-icon class="!mr-1"><Delete /></el-icon> Delete
                       </el-button>
                   </div>
               </template>

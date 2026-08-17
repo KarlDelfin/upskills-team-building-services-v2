@@ -3,22 +3,47 @@ import { supabase } from '@/utils/supabaseClient'
 import { ElMessage } from 'element-plus'
 import moment from 'moment'
 
+export interface CalendarEvent {
+  id: number | string,
+  title: string,
+  start: string,
+  end: string,
+  backgroundColor: string,
+  borderColor: string,
+  textColor: string,
+  extendedProps: {
+    status: string,
+    phone: string,
+    email: string,
+    noOfParticipants: number,
+    timeSlotId: number | string,
+    bookingDate: string,
+  }
+}
+
+export interface TimeSlot {
+  id: number | string,
+  slotTime: string,
+  formattedLabel?: string,
+  disabled?: boolean,
+}
+
 export const useCalendarStore = defineStore('calendar', {
   state: () => ({
-    loading: false,
-    bookings: [],
-    availableSlots: [],
-    slotLoading: false,
-    lastStartDate: null,
-    lastEndDate: null
+    loading: false as Boolean,
+    slotLoading: false as Boolean,
+    bookings: [] as CalendarEvent[],
+    availableSlots: [] as TimeSlot[],
+    lastStartDate: null as string | null,
+    lastEndDate: null as string | null,
   }),
 
   actions: {
     /* GET / FETCH CALENDAR EVENTS IN ACTIVE DATE RANGE */
-    async fetchCalendarEvents(startDate, endDate) {
+    async fetchCalendarEvents(startDate?: string, endDate?: string) {
       this.loading = true
-      this.lastStartDate = startDate
-      this.lastEndDate = endDate
+      if (startDate) this.lastStartDate = startDate
+      if (endDate) this.lastEndDate = endDate
 
       try {
         let query = supabase
@@ -37,7 +62,7 @@ export const useCalendarStore = defineStore('calendar', {
         const { data, error } = await query
         if (error) throw error
 
-        this.bookings = (data || []).map((booking) => {
+        this.bookings = (data || []).map((booking: any) => {
           const dateOnly = moment(booking.bookingDate).format('YYYY-MM-DD')
           const timeOnly = booking.TimeSlot?.slotTime || '00:00:00'
           const startDateTime = `${dateOnly}T${timeOnly}`
@@ -81,7 +106,7 @@ export const useCalendarStore = defineStore('calendar', {
     },
 
     /* GET / FETCH TIME SLOTS & DISABLE TAKEN ONES FOR TARGET DATE */
-    async loadTimeSlotsForTargetDate(dateStr, currentBookingId) {
+    async loadTimeSlotsForTargetDate(dateStr: string, currentBookingId: number | string) {
       this.slotLoading = true
       try {
         const { data: slots, error: slotsErr } = await supabase
@@ -99,10 +124,10 @@ export const useCalendarStore = defineStore('calendar', {
         if (bookingsErr) throw bookingsErr
 
         const takenSlotIds = (existingBookings || [])
-          .filter(b => String(b.id) !== String(currentBookingId))
-          .map(b => b.timeSlotId)
+          .filter((b: any) => String(b.id) !== String(currentBookingId))
+          .map((b: any) => b.timeSlotId)
 
-        this.availableSlots = (slots || []).map(slot => {
+        this.availableSlots = (slots || []).map((slot: any) => {
           const isTaken = takenSlotIds.includes(slot.id)
           const formattedTime = moment(slot.slotTime, 'HH:mm:ss').format('h:mm A')
 

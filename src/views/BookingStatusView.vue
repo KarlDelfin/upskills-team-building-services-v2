@@ -3,8 +3,8 @@
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 class="text-xl font-bold m-0">Status Management</h2>
-                    <p class="text-xs m-0 mt-1">Manage and organize your catalog inventory</p>
+                    <h2 class="!text-xl !font-bold !m-0">Status Management</h2>
+                    <p class="!text-xs !m-0 !mt-1">Configure and organize operational statuses for client bookings</p>
                 </div>
             </div>
         </template>
@@ -73,7 +73,7 @@
                             class="custom-btn-edit" 
                             @click="bookingStatusStore.formController('Edit Status', scope.row)"
                         >
-                            <el-icon class="mr-1"><Edit /></el-icon> Edit
+                            <el-icon class="!mr-1"><Edit /></el-icon> Edit
                         </el-button>
                         <el-button 
                             size="small" 
@@ -81,7 +81,7 @@
                             plain
                             @click="bookingStatusStore.deleteBookingStatus(scope.row.id)"
                         >
-                            <el-icon class="mr-1"><Delete /></el-icon> Delete
+                            <el-icon class="!mr-1"><Delete /></el-icon> Delete
                         </el-button>
                     </div>
                 </template>
