@@ -36,6 +36,7 @@
           class="mb-6 rounded-lg overflow-hidden custom-table min-h-[540px]" 
           :data="timeSlotStore.timeSlots" 
           v-loading="timeSlotStore.loading"
+          element-loading-text="Loading time slots..."
         >
           <el-table-column label="Time Slot" min-width="160">
             <template #default="scope">

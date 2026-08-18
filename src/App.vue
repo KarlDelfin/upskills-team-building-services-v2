@@ -165,9 +165,7 @@ export default {
     isHomePage() {
       return this.$route.path === '/';
     },
-    isPrivacyPolicyPage() {
-      return this.$route.path === '/privacy-policy';
-    },
+   
     currentYear() {
       return new Date().getFullYear();
     },

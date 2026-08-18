@@ -1,5 +1,5 @@
 <template>
-  <el-container class="h-screen flex justify-center items-center max-w-[400px] w-full !mx-auto">
+  <el-container class="h-screen flex justify-center items-center max-w-[400px] w-full !mx-auto" v-loading="authStore.loading" element-loading-text="Connecting to Google...">
     <el-card class="w-[420px] p-5 rounded-xl text-center border-none w-full" shadow="always">
       <div class="flex flex-col gap-1 mb-2">
         <h2 class="text-[#136cb3] text-2xl font-extrabold tracking-wide uppercase m-0">

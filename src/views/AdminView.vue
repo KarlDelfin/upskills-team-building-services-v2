@@ -1,5 +1,5 @@
 <template>
-      <Login v-if="!authStore.getUser" />
+  <Login v-if="!authStore.getUser" />
 
   <div v-else class="flex h-screen overflow-hidden">
     <Sidebar />
@@ -46,9 +46,9 @@ export default {
   mounted() {
     this.authStore.initAuth()
 
-    if(this.authStore.getUser) {
+   /*  if(this.authStore.getUser) {
       this.$router.push('/admin/booking')
-    }
+    } */
 
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {

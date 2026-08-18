@@ -66,6 +66,7 @@
               class="mb-6 rounded-lg overflow-hidden custom-table min-h-[367px]" 
               :data="bookingStore.bookings" 
               v-loading="bookingStore.loading"
+              element-loading-text="Loading bookings..."
               :row-class-name="tableRowClassName"
           >
             <el-table-column label="Client" min-width="180">
@@ -183,6 +184,7 @@
     <!-- UPCOMING BOOKING -->
     <div 
       v-loading="bookingStore.loading" 
+      element-loading-text="Loading upcoming events..."
       class="!w-full xl:!w-[20%] 2xl:!w-[17%] !rounded-xl !bg-white !p-4 sm:!p-5 !border !border-slate-200 flex flex-col !gap-4 !shadow-sm !h-fit"
     >
       <div class="flex items-center justify-between !border-b !border-slate-100 !pb-3">

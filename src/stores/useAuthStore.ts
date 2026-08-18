@@ -74,12 +74,6 @@ export const useAuthStore = defineStore('auth', {
     },
 
     async handleGoogleLogin() {
-        const loading = ElLoading.service({
-            lock: true,
-            text: 'Loading',
-            background: 'rgba(0, 0, 0, 0.7)',
-        })
-
         try {
             this.loading = true
             
@@ -96,7 +90,6 @@ export const useAuthStore = defineStore('auth', {
         } catch (error: any) {
             ElMessage.error(`OAuth Initialization failure: ${error.message || error}`)
             this.loading = false
-            loading.close()
         }
     },
   },

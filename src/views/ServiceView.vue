@@ -23,7 +23,7 @@
             <div class="flex items-center justify-end">
                 <el-button 
                     class="custom-btn-secondary"
-                    @click="serviceStore.fetchServices()"
+                    @click="serviceStore.fetchServices"
                     title="Refresh Data"
                     :loading="serviceStore.loading"
                 >
@@ -45,6 +45,7 @@
           class="mb-6 rounded-lg overflow-hidden custom-table min-h-[540px]" 
           :data="serviceStore.services" 
           v-loading="serviceStore.loading"
+          element-loading-text="Loading service..."
         >
 
         <el-table-column label="Date/Time Created" min-width="150">
@@ -92,7 +93,7 @@
           </el-table-column>
         </el-table>
 
-        <!-- PRODUCT PAGINATION -->
+        <!-- PAGINATION -->
         <div class="flex justify-end pt-2">
             <el-pagination
                 v-model:current-page="serviceStore.servicePagination.currentPage"
@@ -106,7 +107,7 @@
         </div>
     </el-card>
 
-    <!-- PRODUCT FORM -->
+    <!-- FORM -->
     <el-dialog 
         :title="serviceStore.title" 
         v-model="serviceStore.dialog.service" 

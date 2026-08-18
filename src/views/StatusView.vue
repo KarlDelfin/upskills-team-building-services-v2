@@ -44,6 +44,7 @@
             class="mb-6 rounded-lg overflow-hidden custom-table min-h-[540px]" 
             :data="statusStore.bookingStatuses" 
             v-loading="statusStore.loading"
+            element-loading-text="Loading statuses..."
         >
             <el-table-column prop="name" label="Status Name" sortable>
                 <template #default="scope">
