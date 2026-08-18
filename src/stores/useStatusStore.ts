@@ -7,74 +7,78 @@ import debounce from 'lodash/debounce';
 import { markRaw } from 'vue'
 import { Delete } from '@element-plus/icons-vue'
 
-export interface Product {
-    id: number,
-    name: string,
-    description: string,
-    price: number,
-    createdAt: string,
+export interface BookingStatus {
+    id: Number | String,
+    name: String,
+    color: String,
+    dateTimeCreated: Date
 }
 
-export interface ProductPagination {
+export interface BookingStatusPagination {
     currentPage: number,
     elementsPerPage: number,
     totalElements: number,
 }
 
-export const useProductStore = defineStore('product', {
+export const useStatusStore = defineStore('bookingStatus', {
     state: () => ({
         title: '' as String,
         loading: false as Boolean,
         search: '' as String,
 
-        products: [] as Product[],
-        productForm: {} as Product,
-        productPagination: {
+        bookingStatuses: [] as BookingStatus[],
+        
+        bookingStatusForm: { } as BookingStatus,
+
+        bookingStatusPagination: {
             currentPage: 1,
             elementsPerPage: 10,
             totalElements: 0,
-        } as ProductPagination,
+        } as BookingStatusPagination,
 
         dialog: {
-            product: false as Boolean,
+            bookingStatus: false as Boolean,
         }
 
     }),
     actions: {
-        searchProduct: debounce(function(this: any) {
-            this.fetchProducts()
+        /* DEBEOUNCE SEARCH */
+        searchBookingStatus: debounce(function(this: any) {
+            this.fetchBookingStatuses()
         }, 300),
         
-        /* GET PRODUCT WITH SEARCH */
-        async fetchProducts() {
+        /* GET */
+        async fetchBookingStatuses() {
             try {
                 this.loading = true
 
-                const limit = this.productPagination.elementsPerPage;
-                const from = (this.productPagination.currentPage - 1) * limit;
+                const limit = this.bookingStatusPagination.elementsPerPage;
+                const from = (this.bookingStatusPagination.currentPage - 1) * limit;
                 const to = from + limit - 1;
 
                 let query = supabase
-                    .from('Product')
+                    .from('Status')
                     .select('*', { count: 'exact' })
 
                 if (this.search && this.search.trim() !== '') {
                     query = query.ilike('name', `%${this.search}%`);
                 }
 
-                query = query.order('createdAt', { ascending: false }).range(from, to);
+                query = query.order('dateTimeCreated', { ascending: false }).range(from, to);
 
                 const { data, error, count } = await query;
 
                 if(error) throw error
 
-                this.products = data.map((data: Product) => ({
+                this.bookingStatuses = data.map((data) => ({
                     ...data,
-                    createdAt: moment(data.createdAt).format('LLL')
+                    dateTimeCreated: moment(data.dateTimeCreated).format('LLL')
                 })) || []
                 
-                this.productPagination.currentPage = this.productPagination.currentPage;
-                this.productPagination.totalElements = count || 0;
+                this.bookingStatusPagination.currentPage = this.bookingStatusPagination.currentPage;
+                this.bookingStatusPagination.totalElements = count || 0;
+
+                return this.bookingStatuses || []
             }
             catch(error) {
                 console.log(error)
@@ -84,10 +88,10 @@ export const useProductStore = defineStore('product', {
             }
         },
 
-        /* DELETE PRODUCT */
-        async deleteProduct(id: number) {
+        /* DELETE */
+        async deleteBookingStatus(id: Number) {
             try {
-                await ElMessageBox.confirm('Do you want to delete this product?', 'Warning', {
+                await ElMessageBox.confirm('Do you want to delete this status?', 'Warning', {
                     confirmButtonText: 'OK',
                     cancelButtonText: 'Cancel',
                     type: 'warning',
@@ -97,14 +101,14 @@ export const useProductStore = defineStore('product', {
                 this.loading = true
 
                 const { error } = await supabase
-                    .from('Product')
+                    .from('Status')
                     .delete()
                     .eq('id', id)
 
                 if (error) throw error
 
-                ElMessage.success('Product deleted successfully.')
-                this.fetchProducts()
+                ElMessage.success('BookingStatus deleted successfully.')
+                this.fetchBookingStatuses()
 
             } catch (error) {
                 console.error(error)
@@ -117,61 +121,61 @@ export const useProductStore = defineStore('product', {
         async submitForm() {
             try{
                 const payload = {
-                    name: this.productForm.name,
-                    description: this.productForm.description,
-                    price: this.productForm.price
+                    name: this.bookingStatusForm.name,
+                    color: this.bookingStatusForm.color,
                 }
 
-                if(this.title === 'Create Product') {
+                if(this.title === 'Create BookingStatus') {
                     const { error } = await supabase
-                    .from('Product')
+                    .from('Status')
                     .insert(payload) 
 
                     if(error) throw error
 
-                    ElMessage.success('Product created successfully.')
+                    ElMessage.success('BookingStatus created successfully.')
                 }
 
-                if(this.title === 'Edit Product') {
+                if(this.title === 'Edit BookingStatus') {
                     const { error } = await supabase
-                    .from('Product')
+                    .from('Status')
                     .update(payload)
-                    .eq('id', this.productForm.id)
+                    .eq('id', this.bookingStatusForm.id)
 
                     if(error) throw error
 
-                    ElMessage.success('Product updated successfully.')
+                    ElMessage.success('BookingStatus updated successfully.')
                 }
             } catch (error) {
                 console.error(error)
             } finally {
                 this.loading = false
-                this.fetchProducts()
-                this.dialog.product = false
+                this.fetchBookingStatuses()
+                this.dialog.bookingStatus = false
             }
         },
 
         /* DIALOG CONTROLLER */
-        formController(action: string, product: any) {
+        formController(action: String, bookingStatus: any) {
             this.title = action
-            this.dialog.product = true
+            this.dialog.bookingStatus = true
+            this.bookingStatusForm.color = '#136cb3'
 
-            if(action == "Created Product") {}
+            if(action == "Created Status") {}
 
-            if(action == "Edit Product") {
-                this.productForm = { ...product }
+            if(action == "Edit Status") {
+                this.bookingStatusForm = { ...bookingStatus }
+                console.log(bookingStatus)
             }
         },
 
         /* CLEAR */
         clear() {
-            Object.assign(this.productForm, {
+            Object.assign(this.bookingStatusForm, {
                 id: undefined,
                 name: '',
-                description: '',
-                price: null,
+                color: '',
             })
-            this.dialog.product = false
+            this.dialog.bookingStatus = false
         }
     }
 })

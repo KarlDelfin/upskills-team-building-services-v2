@@ -46,6 +46,10 @@ export default {
   mounted() {
     this.authStore.initAuth()
 
+    if(this.authStore.getUser) {
+      this.$router.push('/admin/booking')
+    }
+
     supabase.auth.onAuthStateChange((event, session) => {
       if (event === 'SIGNED_OUT') {
         this.authStore.setUser(null)

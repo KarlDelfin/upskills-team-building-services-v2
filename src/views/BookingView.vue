@@ -1,8 +1,6 @@
 <template>
   <div class="flex flex-col xl:flex-row !w-full !gap-4">
-    <!-- Main Content Area -->
     <div class="!space-y-6 !w-full xl:!w-[80%] 2xl:!w-[83%]">
-      <!-- Metrics Cards -->
       <div class="grid grid-cols-1 sm:grid-cols-2 !gap-4">
         <el-card shadow="hover" class="!rounded-lg !border-slate-200">
           <template #header>
@@ -23,49 +21,55 @@
         </el-card>
       </div>
 
-      <!-- Bookings Table Section -->
-      <el-card shadow="never" class="!rounded-lg !border-slate-200">
-        <!-- Search and Action Bar -->
-        <div class="flex flex-col sm:flex-row !justify-between !items-stretch sm:!items-center !mb-6 !gap-3">
-          <div class="flex items-center !gap-2 !w-full sm:!w-auto">
-            <el-input
-              v-model="bookingStore.searchQuery"
-              placeholder="Search by booking..."
-              class="!w-full sm:!w-80 md:!w-96"
-              :prefix-icon="Search"
-              clearable
-              @input="handleSearch"
-            />
-            <!-- REFRESH BUTTON -->
-            <el-button 
-              class="!p-2.5"
-              :icon="Refresh" 
-              :loading="bookingStore.loading" 
-              @click="bookingStore.fetchDashboardData()" 
-              title="Refresh Data"
-            />
+       <el-card class="shadow-sm border-0 rounded-xl overflow-hidden">
+          <template #header>
+              <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                      <h2 class="!text-xl !font-bold !m-0">Booking Management</h2>
+                      <p class="!text-xs !m-0 !mt-1">Manage and organize your booking</p>
+                  </div>
+              </div>
+          </template>
+
+          <div class="mb-6 flex justify-between w-full gap-3">
+              <div class="w-full">
+                  <el-input
+                      v-model="bookingStore.search"
+                      @input="bookingStore.searchBooking" 
+                      placeholder="Search booking..." 
+                      :prefix-icon="Search"
+                      clearable
+                  />
+              </div>
+
+              <div class="flex items-center justify-end">
+                  <el-button 
+                      class="custom-btn-secondary"
+                      @click="bookingStore.fetchBookings()"
+                      title="Refresh Data"
+                      :loading="bookingStore.loading"
+                  >
+                      <el-icon><Refresh /></el-icon>
+                  </el-button>
+                  <el-button 
+                      class="custom-btn-primary flex items-center" 
+                      @click="bookingStore.formController('Create Booking', {})"
+                      type="primary"
+                  >
+                      <el-icon><Plus /></el-icon>
+                      <span>Create Booking</span>
+                  </el-button>
+              </div>
           </div>
 
-          <el-button 
-            type="primary" 
-            color="#136cb3" 
-            class="custom-btn-primary !font-semibold !w-full sm:!w-auto" 
-            @click="bookingStore.formController('Create Booking')"
-          >
-            Create Booking
-          </el-button>
-        </div>
-
-        <!-- Table Container -->
-        <div class="!overflow-x-auto">
           <el-table 
-            class="custom-table !w-full" 
-            :data="bookingStore.bookings" 
-            v-loading="bookingStore.loading" 
-            :row-class-name="tableRowClassName"
+              class="mb-6 rounded-lg overflow-hidden custom-table min-h-[367px]" 
+              :data="bookingStore.bookings" 
+              v-loading="bookingStore.loading"
+              :row-class-name="tableRowClassName"
           >
             <el-table-column label="Client" min-width="180">
-              <template #default="scope: { row: Booking }">
+              <template #default="scope">
                 <div class="flex flex-col">
                   <div class="!font-bold !text-slate-800 !text-sm">{{ scope.row.fullName }}</div>
                   <div class="!text-xs !text-slate-500 !mt-0.5 flex flex-wrap !gap-1 items-center">
@@ -82,7 +86,7 @@
             </el-table-column>
 
             <el-table-column label="Service" min-width="140">
-              <template #default="scope: { row: Booking }">
+              <template #default="scope">
                 <el-tooltip
                   v-if="scope.row.Service"
                   :content="scope.row.Service.description"
@@ -95,13 +99,13 @@
                 </el-tooltip>
                 
                 <div v-if="scope.row.Service" class="!text-xs !text-slate-500 !mt-1">
-                  Rate: ₱{{ Number(scope.row.Service.price || 0).toLocaleString('en-US', { minimumFractionDigits: 2 }) }}
+                  Rate: ₱{{ scope.row.Service.price?.toLocaleString() }}
                 </div>
               </template>
             </el-table-column>
 
             <el-table-column label="Participants" min-width="120" align="center">
-              <template #default="scope: { row: Booking }">
+              <template #default="scope">
                 <div class="inline-flex items-center !gap-1.5 !bg-slate-100 !px-2 !py-1 !rounded-md !text-slate-700 !font-semibold !text-xs sm:!text-sm">
                   <span class="!w-2 !h-2 !rounded-full !bg-emerald-500"></span>
                   <span>{{ scope.row.noOfParticipants }} pax</span>
@@ -110,7 +114,7 @@
             </el-table-column>
 
             <el-table-column label="Scheduled Date & Time" min-width="180" align="center">
-              <template #default="scope: { row: Booking }">
+              <template #default="scope">
                 <div class="!text-slate-800 !font-medium !text-sm flex flex-col items-center !gap-1">
                   <el-tag class="!whitespace-normal !text-center !h-auto !py-1">
                     {{ scope.row.formattedBookingDate }} {{ scope.row.formattedSlotTime }}
@@ -120,70 +124,63 @@
             </el-table-column>
 
             <el-table-column label="Status" min-width="130">
-              <template #default="scope: { row: Booking }">
+              <template #default="scope">
                 <el-select 
                   v-model="scope.row.statusId" 
                   size="small" 
                   class="!w-full"
-                  @change="handleStatusChange(scope.row)"
+                  @change="bookingStore.handleStatusChange(scope.row)"
                 >
                   <el-option 
                     class="!flex !justify-between !items-center"
-                    v-for="status in bookingStore.statuses" 
+                    v-for="status in statusStore.bookingStatuses" 
                     :key="status.id" 
                     :label="status.name" 
                     :value="status.id" 
-                  >
-                    <span>{{ status.name }}</span>
-                    <span class="rounded-full !h-[10px] !w-[10px]" :style="{ backgroundColor: status.color }"></span>
-                  </el-option>
+                  >{{ status.name }}<!--  <span class="rounded-full !h-[10px] !w-[10px]" :style="{ backgroundColor: status.color }"></span> --></el-option>
                 </el-select>
               </template>
             </el-table-column>
 
-            <el-table-column label="Operation" width="120" fixed="right" align="center">
-              <template #default="scope: { row: Booking }">
-                <div class="flex items-center justify-center !gap-1">
-                  <el-button 
-                    size="small" 
-                    type="primary" 
-                    link 
-                    class="!text-[#136cb3] !font-bold !px-1"
-                    @click="bookingStore.formController('Edit Booking', scope.row)"
-                  >
-                    Edit
-                  </el-button>
-                  <el-button 
-                    size="small" 
-                    type="primary" 
-                    link 
-                    class="!text-rose-500 !font-bold !px-1"
-                    @click="bookingStore.handleDelete(scope.row.id)"
-                  >
-                    Delete
-                  </el-button>
-                </div>
-              </template>
-            </el-table-column>
+              <el-table-column label="Operations" width="160" fixed="right" align="center">
+                  <template #default="scope">
+                      <div class="flex items-center justify-center">
+                          <el-button 
+                              size="small"
+                              class="custom-btn-edit" 
+                              @click="bookingStore.formController('Edit Booking', scope.row)"
+                          >
+                              <el-icon class="!mr-1"><Edit /></el-icon> Edit
+                          </el-button>
+                          <el-button 
+                              size="small" 
+                              type="danger" 
+                              plain
+                              @click="bookingStore.handleDelete(scope.row.id)"
+                          >
+                              <el-icon class="!mr-1"><Delete /></el-icon> Delete
+                          </el-button>
+                      </div>
+                  </template>
+              </el-table-column>
           </el-table>
-        </div>
 
-        <!-- Pagination -->
-        <div class="!mt-4 !overflow-x-auto flex !justify-end">
-          <el-pagination
-            v-model:current-page="bookingStore.pagination.currentPage"
-            v-model:page-size="bookingStore.pagination.elementsPerPage"
-            :page-sizes="[5, 10, 25, 50]"
-            :total="bookingStore.pagination.totalElements"
-            layout="total, sizes, prev, pager, next"
-            @current-change="bookingStore.fetchBookings()"
-            @size-change="bookingStore.fetchBookings()"
-          />
-        </div>
+          <!-- BOOKING PAGINATION -->
+          <div class="flex justify-end !pt-5">
+              <el-pagination
+                  v-model:current-page="bookingStore.bookingPagination.currentPage"
+                  v-model:page-size="bookingStore.bookingPagination.elementsPerPage"
+                  :page-sizes="[5, 10, 25, 50]"
+                  :total="bookingStore.bookingPagination.totalElements"
+                  layout="total, sizes, prev, pager, next, jumper"
+                  @current-change="bookingStore.fetchBookings()"
+                  @size-change="bookingStore.fetchBookings()"
+              />
+          </div>
       </el-card>
     </div>
 
-    <!-- Upcoming Bookings Sidebar Widget -->
+    <!-- UPCOMING BOOKING -->
     <div 
       v-loading="bookingStore.loading" 
       class="!w-full xl:!w-[20%] 2xl:!w-[17%] !rounded-xl !bg-white !p-4 sm:!p-5 !border !border-slate-200 flex flex-col !gap-4 !shadow-sm !h-fit"
@@ -233,7 +230,7 @@
     :title="bookingStore.title" 
     center 
     class="custom-dialog !w-[95%] sm:!w-[80%] md:!w-[650px] lg:!w-[750px] !max-w-[800px] !rounded-xl"
-    :before-close="clearForm"
+    :before-close="bookingStore.clear"
   >
     <el-form 
       ref="bookingFormRef" 
@@ -248,15 +245,20 @@
           prop="serviceId"
           :rules="[{ required: true, message: 'Please select service', trigger: 'change' }]"
         >
-          <el-select 
-            @focus="serviceStore.fetchServices()" 
+         <el-select 
             filterable 
+            @input="serviceStore.searchService" 
             :loading="bookingStore.loading" 
             placeholder="Select Service"
             v-model="bookingStore.bookingForm.serviceId"
             class="!w-full"
           >
-            <el-option v-for="service in bookingStore.services" :key="service.id" :label="service.name" :value="service.id"/>
+            <el-option 
+              v-for="service in serviceStore.services" 
+              :key="service.id" 
+              :label="service.name" 
+              :value="service.id"
+            />
           </el-select>
         </el-form-item>
 
@@ -265,36 +267,55 @@
           prop="statusId"
           :rules="[{ required: true, message: 'Please select status', trigger: 'change' }]"
         >
-          <el-select 
+         <el-select 
+            filterable 
+            @input="statusStore.searchBookingStatus" 
+            :loading="bookingStore.loading" 
             placeholder="Select Status"
             v-model="bookingStore.bookingForm.statusId"
             class="!w-full"
           >
-            <el-option v-for="status in bookingStore.statuses" :key="status.id" :label="status.name" :value="status.id"/>
+            <el-option 
+              class="!flex !justify-between !items-center"
+              v-for="status in statusStore.bookingStatuses" 
+              :key="status.id" 
+              :label="status.name" 
+              :value="status.id" 
+            >
+              {{ status.name }}
+            </el-option>
           </el-select>
         </el-form-item>
       </div>
       
       <!-- Date & Time Selection -->
       <div class="grid grid-cols-1 md:grid-cols-2 !gap-5 !mt-2">
-        <el-form-item class="!w-full" label="Preferred Date">
+        <el-form-item 
+          class="!w-full" 
+          label="Preferred Date" 
+          prop="bookingDate"
+          :rules="[{ required: true, message: 'Please choose preferred date', trigger: 'change' }]">
           <div class="!w-full !overflow-x-auto">
-            <VCalendar expanded @dayclick="handleSelectDate" :min-date="new Date()" :attributes="vCalendarEvents"/>
+            <VCalendar expanded @dayclick="bookingStore.handleSelectDate" :min-date="new Date()" :attributes="bookingStore.vCalendarEvents"/>
           </div>
         </el-form-item>
 
-        <el-form-item class="!w-full" label="Preferred Time">
+        <el-form-item 
+          class="!w-full" 
+          label="Preferred Time" 
+          prop="timeSlotId"
+          :rules="[{ required: true, message: 'Please choose preferred time', trigger: 'change' }]">
           <div class="grid grid-cols-2 sm:grid-cols-3 !gap-2 !w-full !max-h-[280px] !overflow-y-auto !pr-1">
             <button
               type="button"
-              v-for="slot in bookingStore.timeSlots"
-              :key="slot.id"
+              v-for="timeSlot in timeSlotStore.timeSlots"
+              :key="timeSlot.id"
               class="!w-full !border !border-[#ccc] !rounded-[5px] !py-2 !px-2 !text-xs !text-center transition-colors"
-              :class="{ active: bookingStore.bookingForm.timeSlotId === slot.id, disabled: slot.disabled }"
-              @click="!slot.disabled && handleSelectTime(slot.id)"
-              :disabled="slot.disabled"
+              :class="{ active: bookingStore.bookingForm.timeSlotId === timeSlot.id, disabled: timeSlot.disabled }"
+              @click="!timeSlot.disabled && bookingStore.handleSelectTime(timeSlot.id)"
+              :disabled="timeSlot.disabled"
             >
-              {{ slot.formattedTime }}
+              {{ timeSlot.slotTime }}
             </button>
           </div>
         </el-form-item>
@@ -342,7 +363,7 @@
       </div>
 
       <div class="!mt-6 flex !justify-end !gap-2">
-        <el-button @click="clearForm">Cancel</el-button>
+        <el-button @click="bookingStore.clear()">Cancel</el-button>
         <el-button 
           type="primary" 
           color="#136cb3" 
@@ -359,132 +380,42 @@
 
 <script lang="ts">
 import { markRaw } from 'vue'
-import { Search, Refresh } from '@element-plus/icons-vue'
-import { ElMessage, ElMessageBox, type FormInstance } from 'element-plus'
-import { supabase } from '@/utils/supabaseClient'
-import moment from 'moment'
-import debounce from 'lodash/debounce'
-import { useBookingStore, type Booking } from '@/stores/useBookingStore'
+import { Search } from '@element-plus/icons-vue'
+
+import { useBookingStore } from '@/stores/useBookingStore'
 import { useServiceStore  } from '@/stores/useServiceStore'
+import { useTimeSlotStore  } from '@/stores/useTimeSlotStore'
+import { useStatusStore  } from '@/stores/useStatusStore'
 
 export default {
   components: {
     Search: markRaw(Search),
-    Refresh: markRaw(Refresh)
   },
   setup() {
     const bookingStore = useBookingStore()
     const serviceStore = useServiceStore()
-    return { bookingStore, serviceStore }
+    const timeSlotStore = useTimeSlotStore()
+    const statusStore = useStatusStore()
+    return { bookingStore, serviceStore, timeSlotStore, statusStore }
   },
   data() {
     return {
       Search: markRaw(Search),
-      Refresh: markRaw(Refresh),
-      vCalendarEvents: [] as any[],
-      selectedDateStr: '' as string,
-      debouncedSearch: null as (lodash.DebouncedFunc<() => void>) | null
     }
   },
 
 
   methods: {
-    handleSearch(): void {
-      if (this.debouncedSearch) {
-        this.debouncedSearch()
-      }
-    },
-
-    async handleSelectDate(day: any): Promise<void> {
-      try {
-        const selected = moment(day.date).startOf('day')
-        const today = moment().startOf('day')
-        
-        if (selected.isBefore(today) && this.bookingStore.title === 'Create Booking') {
-          ElMessage.warning('Cannot select past date')
-          return
-        }
-        
-        this.selectedDateStr = selected.format('YYYY-MM-DD')
-        this.bookingStore.bookingForm.bookingDate = selected.toISOString()
-        this.vCalendarEvents = [{
-          highlight: { backgroundColor: '#ff8080' },
-          dates: day.date instanceof Date ? day.date : new Date(day.date)
-        }]
-        
-        const startOfDay = selected.format('YYYY-MM-DD 00:00:00')
-        const endOfDay = selected.clone().endOf('day').format('YYYY-MM-DD 23:59:59')
-        
-        const { data, error } = await supabase
-          .from('Booking')
-          .select('timeSlotId')
-          .gte('bookingDate', startOfDay)
-          .lte('bookingDate', endOfDay)
-
-        if (error) throw error
-
-        const bookedTimeSlotIds = new Set(data.map((item: any) => item.timeSlotId))
-
-        this.bookingStore.timeSlots = this.bookingStore.timeSlots.map(slot => ({
-          ...slot,
-          disabled: bookedTimeSlotIds.has(slot.id) && slot.id !== this.bookingStore.bookingForm.timeSlotId
-        }))
-      } catch (error: any) {
-        console.error(error)
-      }
-    },
-
-    handleSelectTime(timeSlotId: string | number): void {
-      this.bookingStore.bookingForm.timeSlotId = timeSlotId
-    },
-
-    async handleStatusChange(row: Booking): Promise<void> {
-      try {
-        this.bookingStore.loading = true
-        const { error } = await supabase
-          .from('Booking')
-          .update({ statusId: row.statusId })
-          .eq('id', row.id)
-
-        if (error) throw error
-
-        ElMessage.success('Booking status updated successfully.')
-        await this.bookingStore.fetchDashboardData()
-      } catch (error: any) {
-        console.error(error)
-        ElMessage.error(error.message || 'Failed to update status.')
-      } finally {
-        this.bookingStore.loading = false
-      }
-    },
-
-
-    clearForm(done?: (cancel?: boolean) => void): void {
-      this.bookingStore.clear()
-      this.vCalendarEvents = []
-      this.selectedDateStr = ''
-
-      const formRef = this.$refs.bookingFormRef as FormInstance | undefined
-      if (formRef) {
-        formRef.resetFields()
-      }
-
-      this.bookingStore.dialog.booking = false
-      if (typeof done === 'function') {
-        done()
-      }
-    },
-
-    async handleConfirm(): Promise<void> {
-      const formEl = await this.$refs.serviceFormRef as any
+    /* DONE */
+    async handleConfirm() {
+      const formEl = await this.$refs.bookingFormRef as any
       await formEl.validate()
 
       await this.bookingStore.submitForm()
     },
+    
 
-
-
-    tableRowClassName({ row }: { row: Booking }): string {
+    tableRowClassName({ row }: { row: any }) {
       const statusName = row.Status?.name
       if (statusName === 'Confirmed') return 'primary-row'
       if (statusName === 'Completed') return 'success-row'
@@ -498,11 +429,15 @@ export default {
     if (this.bookingStore.bookings.length === 0) {
       this.bookingStore.fetchDashboardData()
     }
-
-    this.debouncedSearch = debounce(() => {
-      this.bookingStore.pagination.currentPage = 1
-      this.bookingStore.fetchBookings()
-    }, 500)
+    if (this.serviceStore.services.length === 0) {
+      this.serviceStore.fetchServices()
+    }
+    if (this.timeSlotStore.timeSlots.length === 0) {
+      this.timeSlotStore.fetchTimeSlots()
+    }
+    if (this.statusStore.bookingStatuses.length === 0) {
+      this.statusStore.fetchBookingStatuses()
+    }
   },
 }
 </script>

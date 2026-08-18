@@ -19,7 +19,7 @@
           class="text-[var(--thiColor)] m-0 text-sm md:text-base font-bold tracking-wider uppercase truncate px-2"
         >
           <a href="/" class="hover:text-[var(--secColor)] transition-colors">
-            Company Name
+            Upskills Team Building Services
           </a>
         </h2>
 
@@ -60,12 +60,12 @@
 
           <el-menu-item index="/admin/status">
             <el-icon><CollectionTag /></el-icon>
-            <template #title>Booking Status</template>
+            <template #title>Statuses</template>
           </el-menu-item>
 
           <el-menu-item index="/admin/timeslot">
             <el-icon><Clock /></el-icon>
-            <template #title>Booking Time Slots</template>
+            <template #title>Time Slots</template>
           </el-menu-item>
         </el-sub-menu>
 

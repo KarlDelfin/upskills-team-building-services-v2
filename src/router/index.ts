@@ -25,13 +25,13 @@ const router = createRouter({
         },
         {
           path: 'status',
-          name: 'Booking Status',
-          component: () => import('../views/BookingStatusView.vue'),
+          name: 'Status',
+          component: () => import('../views/StatusView.vue'),
         },
         {
           path: 'timeslot',
-          name: 'Booking Time Slot',
-          component: () => import('../views/BookingTimeSlotView.vue'),
+          name: 'Time Slot',
+          component: () => import('../views/TimeSlotView.vue'),
         },
         {
           path: 'services',

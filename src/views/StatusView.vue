@@ -12,8 +12,8 @@
         <div class="!mb-6 flex justify-between w-full gap-3">
             <div class="w-full">
                 <el-input
-                    v-model="bookingStatusStore.search"
-                    @input="bookingStatusStore.searchBookingStatus" 
+                    v-model="statusStore.search"
+                    @input="statusStore.searchBookingStatus" 
                     placeholder="Search status by name..." 
                     :prefix-icon="Search"
                     clearable
@@ -23,15 +23,15 @@
             <div class="flex items-center justify-end">
                 <el-button 
                     class="flex"
-                    @click="bookingStatusStore.fetchBookingStatuses()"
+                    @click="statusStore.fetchBookingStatuses()"
                     title="Refresh Data"
-                    :loading="bookingStatusStore.loading"
+                    :loading="statusStore.loading"
                 >
                     <el-icon><Refresh /></el-icon>
                 </el-button>
                 <el-button 
                     class="custom-btn-primary flex items-center" 
-                    @click="bookingStatusStore.formController('Create Status', {})"
+                    @click="statusStore.formController('Create Status', {})"
                     type="primary"
                 >
                     <el-icon><Plus /></el-icon>
@@ -42,8 +42,8 @@
 
         <el-table 
             class="mb-6 rounded-lg overflow-hidden custom-table min-h-[540px]" 
-            :data="bookingStatusStore.bookingStatuses" 
-            v-loading="bookingStatusStore.loading"
+            :data="statusStore.bookingStatuses" 
+            v-loading="statusStore.loading"
         >
             <el-table-column prop="name" label="Status Name" sortable>
                 <template #default="scope">
@@ -71,7 +71,7 @@
                         <el-button 
                             size="small"
                             class="custom-btn-edit" 
-                            @click="bookingStatusStore.formController('Edit Status', scope.row)"
+                            @click="statusStore.formController('Edit Status', scope.row)"
                         >
                             <el-icon class="!mr-1"><Edit /></el-icon> Edit
                         </el-button>
@@ -79,7 +79,7 @@
                             size="small" 
                             type="danger" 
                             plain
-                            @click="bookingStatusStore.deleteBookingStatus(scope.row.id)"
+                            @click="statusStore.deleteBookingStatus(scope.row.id)"
                         >
                             <el-icon class="!mr-1"><Delete /></el-icon> Delete
                         </el-button>
@@ -89,24 +89,24 @@
         </el-table>
 
         <!-- PRODUCT PAGINATION -->
-        <div class="flex justify-end pt-2">
+        <div class="flex justify-end !pt-5">
             <el-pagination
-                v-model:current-page="bookingStatusStore.bookingStatusPagination.currentPage"
-                v-model:page-size="bookingStatusStore.bookingStatusPagination.elementsPerPage"
+                v-model:current-page="statusStore.bookingStatusPagination.currentPage"
+                v-model:page-size="statusStore.bookingStatusPagination.elementsPerPage"
                 :page-sizes="[5, 10, 25, 50]"
-                :total="bookingStatusStore.bookingStatusPagination.totalElements"
+                :total="statusStore.bookingStatusPagination.totalElements"
                 layout="total, sizes, prev, pager, next, jumper"
-                @current-change="bookingStatusStore.fetchBookingStatuses()"
-                @size-change="bookingStatusStore.fetchBookingStatuses()"
+                @current-change="statusStore.fetchBookingStatuses()"
+                @size-change="statusStore.fetchBookingStatuses()"
             />
         </div>
     </el-card>
 
     <!-- FORM -->
     <el-dialog 
-        :title="bookingStatusStore.title" 
-        v-model="bookingStatusStore.dialog.bookingStatus" 
-        :before-close="bookingStatusStore.clear"
+        :title="statusStore.title" 
+        v-model="statusStore.dialog.bookingStatus" 
+        :before-close="statusStore.clear"
         width="520px"
         class="custom-dialog rounded-xl overflow-hidden"
         destroy-on-close
@@ -114,8 +114,8 @@
     >
         <el-form 
             ref="bookingStatusFormRef" 
-            :model="bookingStatusStore.bookingStatusForm" 
-            v-loading="bookingStatusStore.loading"
+            :model="statusStore.bookingStatusForm" 
+            v-loading="statusStore.loading"
             label-position="top"
             class="pt-2"
         >
@@ -124,7 +124,7 @@
                 prop="name"
                 :rules="[{ required: true, message: 'Please enter status name', trigger: 'blur' }]"
             >
-                <el-input v-model="bookingStatusStore.bookingStatusForm.name" placeholder="Enter status name"  />
+                <el-input v-model="statusStore.bookingStatusForm.name" placeholder="Enter status name"  />
             </el-form-item>
 
             <el-form-item 
@@ -133,21 +133,21 @@
               :rules="[{ required: true, message: 'Please select status color', trigger: 'change' }]"
             >
               <div class="flex items-center gap-3">
-                <el-color-picker v-model="bookingStatusStore.bookingStatusForm.color" :show-alpha="false" :predefine="predefineColors"/>
-                <el-input v-model="bookingStatusStore.bookingStatusForm.color" placeholder="#136cb3" class="w-32" />
+                <el-color-picker v-model="statusStore.bookingStatusForm.color" :show-alpha="false" :predefine="predefineColors"/>
+                <el-input v-model="statusStore.bookingStatusForm.color" placeholder="#136cb3" class="w-32" />
               </div>
             </el-form-item>
 
             <div class="flex justify-end pt-4 border-t border-slate-200 mt-6">
                 <el-button 
-                    @click="bookingStatusStore.clear()" 
-                    :loading="bookingStatusStore.loading"
+                    @click="statusStore.clear()" 
+                    :loading="statusStore.loading"
                 >Cancel</el-button>
                 <el-button 
                     type="primary"
                     class="custom-btn-primary" 
                     @click="handleConfirm()" 
-                    :loading="bookingStatusStore.loading"
+                    :loading="statusStore.loading"
                 >
                     Confirm
                 </el-button>
@@ -157,7 +157,7 @@
 </template>
 
 <script lang="ts">
-import { useBookingStatusStore } from '@/stores/useBookingStatusStore'
+import { useStatusStore } from '@/stores/useStatusStore'
 import { markRaw } from 'vue'
 import { Search } from '@element-plus/icons-vue'
 
@@ -166,8 +166,8 @@ export default {
         Search: markRaw(Search)
     },
     setup() {
-        const bookingStatusStore = useBookingStatusStore()
-        return { bookingStatusStore }
+        const statusStore = useStatusStore()
+        return { statusStore }
     },
     data() {
         return {
@@ -195,12 +195,12 @@ export default {
             const formEl = await this.$refs.bookingStatusFormRef as any
             await formEl.validate()
 
-            await this.bookingStatusStore.submitForm()
+            await this.statusStore.submitForm()
         }
     },
     mounted() {
-        if(this.bookingStatusStore.bookingStatuses.length === 0) {
-            this.bookingStatusStore.fetchBookingStatuses()
+        if(this.statusStore.bookingStatuses.length === 0) {
+            this.statusStore.fetchBookingStatuses()
         }
     }
 }

@@ -2,7 +2,6 @@ import { defineStore } from 'pinia'
 import { supabase } from '@/utils/supabaseClient'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import moment from 'moment'
-import debounce from 'lodash/debounce';
 
 import { markRaw } from 'vue'
 import { Delete } from '@element-plus/icons-vue'
@@ -12,12 +11,7 @@ export interface BookingTimeSlot {
     slotTime: string,
     isActive: boolean,
     dateTimeCreated: string,
-}
-
-export interface BookingTimeSlotPagination {
-    currentPage: number,
-    elementsPerPage: number,
-    totalElements: number,
+    disabled: boolean
 }
 
 export const useTimeSlotStore = defineStore('timeSlot', {
@@ -28,11 +22,6 @@ export const useTimeSlotStore = defineStore('timeSlot', {
 
         timeSlots: [] as BookingTimeSlot[],
         timeSlotForm: {} as BookingTimeSlot,
-        timeSlotPagination: {
-            currentPage: 1,
-            elementsPerPage: 10,
-            totalElements: 0,
-        } as BookingTimeSlotPagination,
 
         dialog: {
             timeSlot: false as Boolean,
@@ -40,29 +29,19 @@ export const useTimeSlotStore = defineStore('timeSlot', {
 
     }),
     actions: {
-        /* SEARCH TIME SLOT */
-        /* searchTimeSlot: debounce(function(this: any) {
-            this.fetchTimeSlots()
-        }, 300), */
         
         /* GET TIME SLOT WITH SEARCH */
         async fetchTimeSlots() {
             try {
                 this.loading = true
 
-                const limit = this.timeSlotPagination.elementsPerPage;
-                const from = (this.timeSlotPagination.currentPage - 1) * limit;
-                const to = from + limit - 1;
-
                 let query = supabase
                     .from('TimeSlot')
                     .select('*', { count: 'exact' })
+                    .eq('isActive', true)
+                    .order('slotTime', { ascending: true });
 
-                /* if (this.search && this.search.trim() !== '') {
-                    query = query.ilike('slotTime', `%${this.search}%`);
-                } */
-
-                query = query.order('dateTimeCreated', { ascending: false }).range(from, to);
+                query = query.order('dateTimeCreated', { ascending: false })
 
                 const { data, error, count } = await query;
 
@@ -71,11 +50,8 @@ export const useTimeSlotStore = defineStore('timeSlot', {
                 this.timeSlots = data.map((data: BookingTimeSlot) => ({
                     ...data,
                     dateTimeCreated: moment(data.dateTimeCreated).format('LLL'),
+                    slotTime: moment(data.slotTime, 'HH:mm:ss').format('h:mm A'),
                 })) || []
-                this.timeSlotPagination.currentPage = this.timeSlotPagination.currentPage;
-                this.timeSlotPagination.totalElements = count || 0;
-
-                return this.timeSlots
             }
             catch(error) {
                 console.log(error)

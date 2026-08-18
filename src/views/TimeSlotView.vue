@@ -4,21 +4,12 @@
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
                     <h2 class="!text-xl !font-bold !m-0">Time Slot Management</h2>
-                    <p class="!text-xs !m-0 !mt-1">Configure available daily time schedules and capacity for client appointments</p>
+                    <p class="!text-xs !m-0 !mt-1">Configure available daily time schedules for client bookings</p>
                 </div>
             </div>
         </template>
 
         <div class="!mb-6 flex justify-end w-full gap-3">
-            <!-- <div class="w-full">
-                <el-input
-                    v-model="timeSlotStore.search"
-                    @input="timeSlotStore.searchTimeSlot" 
-                    placeholder="Search time slot by name..." 
-                    :prefix-icon="Search"
-                    clearable
-                />
-            </div> -->
 
             <div class="flex items-center justify-end">
                 <el-button 
@@ -86,19 +77,6 @@
               </template>
           </el-table-column>
         </el-table>
-
-        <!-- PRODUCT PAGINATION -->
-        <div class="flex justify-end pt-2">
-            <el-pagination
-                v-model:current-page="timeSlotStore.timeSlotPagination.currentPage"
-                v-model:page-size="timeSlotStore.timeSlotPagination.elementsPerPage"
-                :page-sizes="[5, 10, 25, 50]"
-                :total="timeSlotStore.timeSlotPagination.totalElements"
-                layout="total, sizes, prev, pager, next, jumper"
-                @current-change="timeSlotStore.fetchTimeSlots()"
-                @size-change="timeSlotStore.fetchTimeSlots()"
-            />
-        </div>
     </el-card>
 
     <!-- PRODUCT FORM -->

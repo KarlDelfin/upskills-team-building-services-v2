@@ -1,19 +1,19 @@
 <template>
-  <div data-lenis-prevent id="bookingForm" v-loading="bookingStore.loading" class="booking_form">
+  <div data-lenis-prevent id="bookingForm" v-loading="bookingFormStore.loading" class="booking_form">
     <!-- Close Button -->
-    <button class="booking_form_close" aria-label="Close form" @click="bookingStore.clear">
+    <button class="booking_form_close" aria-label="Close form" @click="bookingFormStore.clear">
       &times;
     </button>
 
     <div class="booking_form_wrapper">
       <!-- Dynamic Step Indicator -->
       <div class="steps_con">
-        <template v-for="(step, index) in bookingStore.steps" :key="step.number">
+        <template v-for="(step, index) in bookingFormStore.steps" :key="step.number">
           <div 
             class="step_item" 
             :class="{ 
-              active: bookingStore.formStep === step.number, 
-              completed: bookingStore.formStep > step.number 
+              active: bookingFormStore.formStep === step.number, 
+              completed: bookingFormStore.formStep > step.number 
             }"
           >
             <div class="step_circle">
@@ -29,24 +29,23 @@
 
           <!-- Connector Line -->
           <div 
-            v-if="index < bookingStore.steps.length - 1" 
+            v-if="index < bookingFormStore.steps.length - 1" 
             class="step_line"
-            :class="{ completed: bookingStore.formStep > step.number }"
+            :class="{ completed: bookingFormStore.formStep > step.number }"
           ></div>
         </template>
       </div>
 
-      <!-- Main Content Panel Wrapper -->
       <div>
         <!-- STEP 1: SERVICES -->
-        <div v-if="bookingStore.formStep === 1" class="service_panel">
+        <div v-if="bookingFormStore.formStep === 1" class="service_panel">
           <div class="services_grid">
             <div
-              v-for="service in bookingStore.services"
+              v-for="service in serviceStore.services"
               :key="service.id"
               class="service_card"
-              :class="{ active: bookingStore.bookingForm.serviceId === service.id }"
-              @click="bookingStore.handleSelectService(service.id)"
+              :class="{ active: bookingFormStore.bookingForm.serviceId === service.id }"
+              @click="bookingFormStore.handleSelectService(service.id)"
             >
               <div class="service_header">
                 <h3>{{ service.name }}</h3>
@@ -54,7 +53,7 @@
               <p class="service_description">{{ service.description }}</p>
               <div class="service_footer">
                 <i class="fa-solid fa-circle-check"></i>
-                <span>{{ bookingStore.bookingForm.serviceId === service.id ? 'Selected' : 'Select Service' }}</span>
+                <span>{{ bookingFormStore.bookingForm.serviceId === service.id ? 'Selected' : 'Select Service' }}</span>
               </div>
             </div>
           </div>
@@ -62,21 +61,21 @@
           <!-- Navigation -->
           <div class="form_nav">
             <span></span>
-            <button class="btn_next" @click="bookingStore.goToStep(2, 'next')">
+            <button class="btn_next" @click="bookingFormStore.goToStep(2, 'next')">
               Next <i class="fa-solid fa-arrow-right"></i>
             </button>
           </div>
         </div>
 
         <!-- STEP 2: BOOKING TIME -->
-        <div v-else-if="bookingStore.formStep === 2" class="service_panel">
+        <div v-else-if="bookingFormStore.formStep === 2" class="service_panel">
           <div>
             <label class="field_label">Preferred Date</label>
             <VCalendar
               expanded
               :min-date="new Date()"
-              :attributes="bookingStore.vCalendarEvents"
-              @dayclick="bookingStore.handleSelectDate"
+              :attributes="bookingFormStore.vCalendarEvents"
+              @dayclick="bookingFormStore.handleSelectDate"
             />
           </div>
 
@@ -84,28 +83,28 @@
             <label class="field_label">Preferred Time</label>
             <div class="time_buttons">
               <button
-                v-for="slot in bookingStore.timeSlots"
+                v-for="slot in timeSlotStore.timeSlots"
                 :key="slot.id"
                 type="button"
                 class="time_btn"
                 :class="{
-                  active: bookingStore.bookingForm.timeSlotId === slot.id,
+                  active: slot.id === slot.id,
                   disabled: slot.disabled
                 }"
                 :disabled="slot.disabled"
-                @click="!slot.disabled && bookingStore.handleSelectTime(slot.id)"
+                @click="!slot.disabled && bookingFormStore.handleSelectTime(slot.id)"
               >
-                {{ slot.formattedTime }}
+                {{ slot.slotTime }}
               </button>
             </div>
           </div>
 
           <!-- Navigation -->
           <div class="form_nav">
-            <button class="btn_back" @click="bookingStore.goToStep(1, 'back')">
+            <button class="btn_back" @click="bookingFormStore.goToStep(1, 'back')">
               <i class="fa-solid fa-arrow-left"></i> Back
             </button>
-            <button class="btn_next" @click="bookingStore.goToStep(3, 'next')">
+            <button class="btn_next" @click="bookingFormStore.goToStep(3, 'next')">
               Next <i class="fa-solid fa-arrow-right"></i>
             </button>
           </div>
@@ -113,36 +112,43 @@
 
         <!-- STEP 3: BOOKING FORM -->
         <div v-else class="form_panel">
-          <el-form ref="bookingFormRef" label-position="top" :model="bookingStore.bookingForm" :rules="formRules">
-            <el-form-item label="Full Name" prop="fullName">
-              <el-input v-model="bookingStore.bookingForm.fullName" placeholder="John Doe" size="large" />
+          <el-form ref="bookingFormRef" label-position="top" :model="bookingFormStore.bookingForm">
+            <el-form-item label="Full Name" prop="fullName" :rules="[{ fullName: [{ required: true, message: 'Please input full name', trigger: 'blur' }],}]">
+              <el-input v-model="bookingFormStore.bookingForm.fullName" placeholder="John Doe" size="large" />
             </el-form-item>
 
-            <el-form-item label="Email" prop="email">
-              <el-input v-model="bookingStore.bookingForm.email" placeholder="johndoe@example.com" size="large" />
+            <el-form-item label="Email" prop="email" :rules="[{ email: [ { required: true, message: 'Please input email address', trigger: 'blur' }, { pattern: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/, message: 'Please input a valid email address', trigger: ['blur', 'change'] } ],}]">
+              <el-input v-model="bookingFormStore.bookingForm.email" placeholder="johndoe@example.com" size="large" />
             </el-form-item>
 
-            <el-form-item label="Phone" prop="phone">
-              <el-input v-model="bookingStore.bookingForm.phone" maxlength="11" placeholder="09XXXXXXXXXX" size="large" />
+            <el-form-item 
+              label="Phone"
+              prop="phone"
+              :rules="[ { phone: [ { required: true, message: 'Please input phone number', trigger: 'blur' }, { pattern: /^09\d{9}$/, message: 'Must be a valid PH mobile number starting with 09', trigger: ['blur', 'change'] } ] } ]">
+              <el-input v-model="bookingFormStore.bookingForm.phone" maxlength="11" placeholder="09XXXXXXXXXX" size="large" />
             </el-form-item>
 
-            <el-form-item>
+            <!-- <el-form-item label="Number of Participants" prop="noOfParticipants">
+              <el-input-number v-model="bookingFormStore.bookingForm.noOfParticipants" :min="1" style="width: 100%" size="large" placeholder="Enter number" />
+            </el-form-item> -->
+
+            <el-form-item >
               <VueHcaptcha
                 ref="hcaptchaRef"
-                :sitekey="bookingStore.sitekey"
+                :sitekey="HCAPTCHA_SITEKEY"
                 size="normal"
-                @verify="onVerify"
-                @expired="onExpired"
+                @verify="bookingFormStore.onVerify"
+                @expired="bookingFormStore.onExpired"
               />
             </el-form-item>
           </el-form>
 
           <!-- Navigation -->
           <div class="form_nav">
-            <button class="btn_back" @click="bookingStore.goToStep(2, 'back')">
+            <button class="btn_back" @click="bookingFormStore.goToStep(2, 'back')">
               <i class="fa-solid fa-arrow-left"></i> Back
             </button>
-            <button class="btn_submit" :disabled="bookingStore.loading" @click="handleSubmit">
+            <button class="btn_submit" :disabled="bookingFormStore.loading" @click="handleConfirm">
               Confirm Booking <i class="fa-solid fa-check"></i>
             </button>
           </div>
@@ -153,65 +159,47 @@
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
-import VueHcaptcha from '@hcaptcha/vue3-hcaptcha'
-import { useBookingStore } from '@/stores/useBookingStore'
-import type { FormInstance, FormRules } from 'element-plus'
+import VueHcaptcha from '@hcaptcha/vue3-hcaptcha';
+import { supabase } from '@/utils/supabaseClient';
+import { ElMessage } from 'element-plus';
+import gsap from 'gsap';
+import moment from 'moment';
+import { useTimeSlotStore } from '@/stores/useTimeSlotStore';
+import { useServiceStore } from '@/stores/useServiceStore';
+import { useBookingFormStore } from '@/stores/useBookingFormStore';
 
-export default defineComponent({
+export default {
   components: {
     VueHcaptcha
   },
 
+  setup() {
+    const timeSlotStore = useTimeSlotStore()
+    const serviceStore = useServiceStore()
+    const bookingFormStore = useBookingFormStore()
+    return { timeSlotStore, serviceStore, bookingFormStore }
+  },
+
   data() {
     return {
-      formRules: {
-        fullName: [{ required: true, message: 'Please input full name', trigger: 'blur' }],
-        email: [
-          { required: true, message: 'Please input email address', trigger: 'blur' },
-          {
-            pattern: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/,
-            message: 'Please input a valid email address',
-            trigger: ['blur', 'change']
-          }
-        ],
-        phone: [
-          { required: true, message: 'Please input phone number', trigger: 'blur' },
-          {
-            pattern: /^09\d{9}$/,
-            message: 'Must be a valid PH mobile number starting with 09',
-            trigger: ['blur', 'change']
-          }
-        ],
-        noOfParticipants: [{ required: true, message: 'Please input number of participants', trigger: 'blur' }]
-      } as FormRules
-    }
+      HCAPTCHA_SITEKEY: import.meta.env.VITE_HCAPTCHA_SITE_KEY
+    };
   },
-
-  setup() {
-    const bookingStore = useBookingStore()
-    return { bookingStore }
-  },
-
-  async mounted() {
-    await this.bookingStore.fetchInitialData()
-  },
-
+ 
   methods: {
-    onVerify(token: string): void {
-      this.bookingStore.setCaptchaToken(token)
-    },
+    async handleConfirm() {
+        const formEl = await this.$refs.bookingFormRef as any
+        await formEl.validate()
 
-    onExpired(): void {
-      this.bookingStore.setCaptchaToken(null)
+        await this.bookingFormStore.submitBooking()
+        
     },
-
-    async handleSubmit(): Promise<void> {
-      const formRef = this.$refs.bookingFormRef as FormInstance | undefined
-      await this.bookingStore.submitBooking(formRef || null)
-    }
+  
+    async mounted() {
+      
+    },
   }
-})
+};
 </script>
 
 <style scoped>

@@ -22,18 +22,38 @@ export const useAuthStore = defineStore('auth', {
     async initAuth() {
       try {
         this.loading = true
-        const { data: { session }, error } = await supabase.auth.getSession()
-        
-        if (error) throw error
-        
-        if (session?.user) {
-          this.user = session.user
-        } else {
-          this.user = null
+
+        const { data: { session }, error: sessionError } = await supabase.auth.getSession()
+
+        if (sessionError) throw sessionError
+
+        if (!session?.user?.email) {
+          this.setUser(null)
+          return
         }
-      } catch (error) {
+
+        const userEmail = session.user.email
+
+        const { data, error } = await supabase
+          .from('User')
+          .select('email')
+          .eq('email', userEmail)
+          .maybeSingle()
+
+        if (error) throw error
+
+        if (!data) {
+          ElMessage.error(`Access Denied: ${userEmail} is not authorized.`)
+          await supabase.auth.signOut()
+          this.setUser(null)
+          return
+        }
+
+        this.setUser(session.user)
+
+      } catch (error: any) {
         console.error('Auth initialization error:', error)
-        this.user = null
+        this.setUser(null)
       } finally {
         this.loading = false
       }
@@ -45,7 +65,7 @@ export const useAuthStore = defineStore('auth', {
         await supabase.auth.signOut()
         this.user = null
         ElMessage.info('Logged out securely.')
-        router.push('/')
+        router.push('/admin')
       } catch (error: any) {
         ElMessage.error(error.message || 'Logout failed.')
       } finally {
@@ -63,7 +83,7 @@ export const useAuthStore = defineStore('auth', {
         try {
             this.loading = true
             
-            const REDIRECTION_URL = `${window.location.origin}/`
+            const REDIRECTION_URL = `${window.location.origin}/admin/booking`
 
             const { error } = await supabase.auth.signInWithOAuth({
             provider: 'google',

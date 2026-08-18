@@ -80,7 +80,7 @@
               <li>Phone: <a href="tel:09610115585">0961-011-5585</a></li>
             </ul>
             <ul>
-              <li><a href="https://www.facebook.com/hello.upskills"><img src="../src/assets/image/fb.webp" alt="Facebook"></a></li>
+              <li><a href="https://www.facebook.com/hello.upskills" target="_blank"><img src="../src/assets/image/fb.webp" alt="Facebook"></a></li>
             </ul>
           </div>
           <div class="footer_btn_con">
@@ -134,11 +134,21 @@ import { initHeaderAnimations, initFooterAnimations, initMobileMenu } from '@/ut
 import ChatBot from './components/ChatBot.vue';
 import BookingForm from '@/components/BookingForm.vue';
 
+import { useTimeSlotStore } from '@/stores/useTimeSlotStore';
+import { useServiceStore } from '@/stores/useServiceStore';
+import { useBookingFormStore } from '@/stores/useBookingFormStore';
+
 export default {
   name: 'App',
   components: {
     ChatBot,
     BookingForm,
+  },
+  setup() {
+    const timeSlotStore = useTimeSlotStore()
+    const serviceStore = useServiceStore()
+    const bookingFormStore = useBookingFormStore()
+    return { timeSlotStore, serviceStore, bookingFormStore }
   },
   data() {
     return {
@@ -173,9 +183,7 @@ export default {
       localStorage.setItem('activeLink', index);
     },
     openBookingForm() {
-      gsap.fromTo(
-        '#bookingForm',
-        {
+      gsap.fromTo('#bookingForm',{
           opacity: 0,
           y: 300,
         },
@@ -184,8 +192,9 @@ export default {
           opacity: 1,
           y: 0,
           ease: 'back.out',
-        }
-      );
+        });
+        this.timeSlotStore.fetchTimeSlots()
+        this.serviceStore.fetchServices()
     },
     clear() {
       this.dialog.bookingForm = false;
