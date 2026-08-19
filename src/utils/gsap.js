@@ -158,7 +158,7 @@ export function initHomeAnimations() {
         scrollTrigger: { 
             trigger: ".gallery_con", 
             start: "top top", 
-            end: "+=5000",
+            end: "+=3000",
             scrub: true, 
             pin: true 
         }

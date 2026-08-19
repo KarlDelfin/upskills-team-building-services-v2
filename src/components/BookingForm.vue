@@ -1,7 +1,7 @@
 <template>
-  <div data-lenis-prevent id="bookingForm" v-loading="bookingFormStore.loading" class="booking_form">
+  <div data-lenis-prevent id="bookingForm" v-loading="bookingFormStore.loading" element-loading-text="Submitting booking..." class="booking_form">
     <!-- Close Button -->
-    <button class="booking_form_close" aria-label="Close form" @click="bookingFormStore.clear">
+    <button class="booking_form_close" @click="bookingFormStore.clear">
       &times;
     </button>
 
@@ -88,7 +88,7 @@
                 type="button"
                 class="time_btn"
                 :class="{
-                  active: slot.id === slot.id,
+                  active: bookingFormStore.bookingForm.timeSlotId === slot.id,
                   disabled: slot.disabled
                 }"
                 :disabled="slot.disabled"
@@ -113,18 +113,18 @@
         <!-- STEP 3: BOOKING FORM -->
         <div v-else class="form_panel">
           <el-form ref="bookingFormRef" label-position="top" :model="bookingFormStore.bookingForm">
-            <el-form-item label="Full Name" prop="fullName" :rules="[{ fullName: [{ required: true, message: 'Please input full name', trigger: 'blur' }],}]">
+            <el-form-item label="Full Name" prop="fullName" :rules="[{ required: true, message: 'Please input full name', trigger: 'blur' }]">
               <el-input v-model="bookingFormStore.bookingForm.fullName" placeholder="John Doe" size="large" />
             </el-form-item>
 
-            <el-form-item label="Email" prop="email" :rules="[{ email: [ { required: true, message: 'Please input email address', trigger: 'blur' }, { pattern: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/, message: 'Please input a valid email address', trigger: ['blur', 'change'] } ],}]">
+            <el-form-item label="Email" prop="email" :rules="[ { required: true, message: 'Please input email address', trigger: 'blur' }, { pattern: /^[A-Za-z0-9._%+-]+@[A-Za-z0-9.-]+\.[A-Za-z]{2,}$/, message: 'Please input correct email address', trigger: ['blur', 'change'] } ]">
               <el-input v-model="bookingFormStore.bookingForm.email" placeholder="johndoe@example.com" size="large" />
             </el-form-item>
 
             <el-form-item 
               label="Phone"
               prop="phone"
-              :rules="[ { phone: [ { required: true, message: 'Please input phone number', trigger: 'blur' }, { pattern: /^09\d{9}$/, message: 'Must be a valid PH mobile number starting with 09', trigger: ['blur', 'change'] } ] } ]">
+              :rules="[ { required: true, message: 'Please input phone number', trigger: 'blur' }, { pattern: /^09\d{9}$/, message: 'Must be a valid PH mobile number starting with 09', trigger: ['blur', 'change'] } ]">
               <el-input v-model="bookingFormStore.bookingForm.phone" maxlength="11" placeholder="09XXXXXXXXXX" size="large" />
             </el-form-item>
 
@@ -193,10 +193,6 @@ export default {
 
         await this.bookingFormStore.submitBooking()
         
-    },
-  
-    async mounted() {
-      
     },
   }
 };

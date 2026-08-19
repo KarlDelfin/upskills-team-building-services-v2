@@ -11,6 +11,17 @@ import { Delete } from '@element-plus/icons-vue'
 import { useTimeSlotStore } from './useTimeSlotStore';
 import { useStatusStore } from './useStatusStore';
 
+export interface BookingForm {
+    serviceId: String
+    bookingDate: String
+    timeSlotId: String | Number
+    statusId: String
+    fullName: String
+    email: String
+    phone: String
+    noOfParticipants: Number
+}
+
 export const useBookingFormStore = defineStore('bookingForm', {
     state: () => ({
         loading: false,
@@ -19,7 +30,10 @@ export const useBookingFormStore = defineStore('bookingForm', {
         services: [],
         statuses: [],
         timeSlots: [],
-        vCalendarEvents: [],
+        vCalendarEvents: [] as Array<{
+            highlight: { backgroundColor: string }
+            dates: Date
+        }>,
         steps: [
             { number: 1, title: 'Training Program', desc: 'Select the workshop or training service' },
             { number: 2, title: 'Schedule', desc: 'Choose your preferred date and time' },
@@ -34,7 +48,7 @@ export const useBookingFormStore = defineStore('bookingForm', {
             email: '',
             phone: '',
             noOfParticipants: 1
-        },
+        } as BookingForm,
     }),
     actions: {
         onVerify(token: any) {
@@ -100,12 +114,12 @@ export const useBookingFormStore = defineStore('bookingForm', {
 
             this.bookingForm.bookingDate = targetDate.toISOString();
 
-           /*  this.vCalendarEvents = [
+            this.vCalendarEvents = [
                 {
                     highlight: { backgroundColor: 'var(--priColor, #3b82f6)' },
                     dates: new Date(day.date)
                 }
-            ]; */
+            ];
 
             try {
                 const startOfDay = targetDate.format('YYYY-MM-DD 00:00:00');
@@ -142,16 +156,11 @@ export const useBookingFormStore = defineStore('bookingForm', {
                     return;
                 }
 
-                if (!this.bookingForm.statusId) {
-                    const pendingStatus = statusStore.find(s => s.name?.toLowerCase() === 'pending');
-                    if (pendingStatus) this.bookingForm.statusId = pendingStatus.id;
-                }
-
                 this.loading = true;
 
                 const payload = {
                     serviceId: this.bookingForm.serviceId,
-                    statusId: this.bookingForm.statusId,
+                    statusId: import.meta.env.PENDING_STATUS_ID,
                     bookingDate: this.bookingForm.bookingDate,
                     timeSlotId: this.bookingForm.timeSlotId,
                     fullName: this.bookingForm.fullName,
@@ -195,13 +204,13 @@ export const useBookingFormStore = defineStore('bookingForm', {
         clear() {
             const timeSlotStore = useTimeSlotStore()
             const statusStore = useStatusStore()
-            const pendingStatus = statusStore.find(s => s.name?.toLowerCase() === 'pending');
+            const pendingStatus = statusStore.bookingStatuses.find((s: any) => s.name?.toLowerCase() === 'pending');
 
             Object.assign(this.bookingForm, {
                 serviceId: '',
                 bookingDate: '',
                 timeSlotId: '',
-                statusId: pendingStatus ? pendingStatus.id : '',
+                statusId: import.meta.env.PENDING_STATUS_ID,
                 fullName: '',
                 email: '',
                 phone: '',
@@ -215,7 +224,7 @@ export const useBookingFormStore = defineStore('bookingForm', {
                 this.formStep = 1;
             }, 500);
 
-            gsap.to('.bookingForm', {
+            gsap.to('#bookingForm', {
                 opacity: 0,
                 y: window.innerHeight,
                 duration: 0.5,

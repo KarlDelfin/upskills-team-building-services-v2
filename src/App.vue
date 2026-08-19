@@ -129,8 +129,10 @@
 
 <script lang="ts">
 import { gsap } from 'gsap/all';
+
 // @ts-ignore - GSAP utilities are provided as JS and do not have a TS declaration file.
 import { initHeaderAnimations, initFooterAnimations, initMobileMenu } from '@/utils/gsap';
+
 import ChatBot from './components/ChatBot.vue';
 import BookingForm from '@/components/BookingForm.vue';
 
@@ -191,8 +193,7 @@ export default {
           y: 0,
           ease: 'back.out',
         });
-        this.timeSlotStore.fetchTimeSlots()
-        this.serviceStore.fetchServices()
+       
     },
     clear() {
       this.dialog.bookingForm = false;
@@ -208,6 +209,10 @@ export default {
     },
   },
   mounted() {
+    /* FOR BOOKING FORM */
+    this.timeSlotStore.fetchTimeSlots()
+    this.serviceStore.fetchServices()
+
     this.updateActiveLink(this.$route.path);
 
     setTimeout(() => {

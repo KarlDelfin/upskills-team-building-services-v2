@@ -398,6 +398,7 @@ export default {
     const serviceStore = useServiceStore()
     const timeSlotStore = useTimeSlotStore()
     const statusStore = useStatusStore()
+
     return { bookingStore, serviceStore, timeSlotStore, statusStore }
   },
   data() {
@@ -405,10 +406,7 @@ export default {
       Search: markRaw(Search),
     }
   },
-
-
   methods: {
-    /* DONE */
     async handleConfirm() {
       const formEl = await this.$refs.bookingFormRef as any
       await formEl.validate()
@@ -416,7 +414,6 @@ export default {
       await this.bookingStore.submitForm()
     },
     
-
     tableRowClassName({ row }: { row: any }) {
       const statusName = row.Status?.name
       if (statusName === 'Confirmed') return 'primary-row'

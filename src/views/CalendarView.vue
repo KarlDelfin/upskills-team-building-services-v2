@@ -2,7 +2,7 @@
   <div class="p-3 sm:p-6 bg-white rounded-2xl shadow-lg font-sans w-full min-h-[600px] block">
     <!-- Parent wrapper with explicit dimensions -->
     <div 
-      v-loading="store.loading" 
+      v-loading="calendarStore.loading.calendar" 
       element-loading-text="Loading calendar events..."
       class="w-full min-h-[550px] relative"
     >
@@ -13,15 +13,15 @@
       />
     </div>
 
-    <!-- Booking Details Dialog -->
+    <!-- VIEW BOOKING -->
     <el-dialog 
-      v-model="detailsDialogVisible" 
+      v-model="calendarStore.dialog.viewEvent" 
       title="Booking Details" 
       class="!w-[92vw] sm:!w-[440px] !max-w-[440px]" 
       center 
       destroy-on-close
     >
-      <div v-if="selectedBooking" v-loading="store.slotLoading" class="!space-y-4 !text-slate-700">
+      <div v-if="selectedBooking" v-loading="calendarStore.loading.slot" class="!space-y-4 !text-slate-700">
         <div class="flex items-center justify-between !border-b !border-slate-100 !pb-3">
           <span class="!font-semibold !text-slate-500 !text-sm">Status</span>
           <span 
@@ -37,29 +37,9 @@
           <span class="sm:col-span-2 !font-bold !text-slate-800 !break-words">{{ selectedBooking.title }}</span>
 
           <span class="!text-slate-500 !font-medium">Scheduled Date:</span>
-          <span class="sm:col-span-2 !font-semibold !text-slate-700 flex flex-col !gap-2 !w-full">
-            <div>{{ formatBookingTime(selectedBooking.start) }}</div>
-            <el-select
-              v-model="selectedSlotId"
-              placeholder="Select a time slot"
-              class="!w-full"
-              size="large"
-              @change="handleSlotChange"
-            >
-              <el-option
-                v-for="slot in store.availableSlots"
-                :key="slot.id"
-                :label="slot.formattedLabel"
-                :value="slot.id"
-                :disabled="slot.disabled"
-              >
-                <div class="flex items-center justify-between">
-                  <span>{{ slot.formattedLabel }}</span>
-                  <span v-if="slot.disabled" class="!text-xs !text-red-500 !font-semibold">Booked</span>
-                </div>
-              </el-option>
-            </el-select>
-          </span>
+          <span class="sm:col-span-2 !font-semibold !text-slate-700 flex flex-col !gap-2 !w-full"> <div>{{ selectedBooking.start }}</div> </span>
+          <span class="!text-slate-500 !font-medium">Time:</span>
+          <span class="sm:col-span-2 !font-semibold !text-slate-700 flex flex-col !gap-2 !w-full"> <div>{{ selectedBooking.extendedProps.slotTime }}</div> </span> 
 
           <span class="!text-slate-500 !font-medium">Email:</span>
           <span class="sm:col-span-2 !text-slate-700 !break-all">{{ selectedBooking.extendedProps.email || 'N/A' }}</span>
@@ -76,60 +56,52 @@
 
       <template #footer>
         <div class="flex justify-end !gap-2">
-          <el-button class="!w-full sm:!w-auto" @click="detailsDialogVisible = false">Close</el-button>
+          <el-button class="!w-full sm:!w-auto" @click="calendarStore.dialog.viewEvent = false">Close</el-button>
         </div>
       </template>
     </el-dialog>
 
-    <!-- Reschedule Dialog -->
-    <el-dialog
-      v-model="rescheduleDialogVisible"
-      title="Select Time Slot"
-      class="!w-[92vw] sm:!w-[440px] !max-w-[440px]"
+    <!-- SCHEDULE BOOKING -->
+    <el-dialog 
+      v-model="calendarStore.dialog.createEvent"
+      title="Schedule Booking to Calendar" 
+      class="!w-[92vw] sm:!w-[440px] !max-w-[440px]" 
       center
-      :before-close="handleRescheduleCancel"
     >
-      <div v-loading="store.slotLoading" class="!space-y-4">
+      <div class="!space-y-4">
         <p class="!text-sm !text-slate-600">
-          Target Date: <strong class="!text-slate-800">{{ targetDateFormatted }}</strong>
+          Target Date: <strong class="!text-slate-800">{{ selectedDateFormatted }}</strong>
         </p>
 
         <div class="!space-y-2">
-          <label class="block !text-sm !font-medium !text-slate-700">Available Time Slots:</label>
-          <el-select
-            v-model="selectedSlotId"
-            placeholder="Select a time slot"
+           <label class="block !text-sm !font-medium !text-slate-700">Booking:</label>
+          <el-select 
+            v-model="selectedBookingId" 
+            placeholder="Select a booking" 
             class="!w-full"
             size="large"
+            filterable
           >
             <el-option
-              v-for="slot in store.availableSlots"
-              :key="slot.id"
-              :label="slot.formattedLabel"
-              :value="slot.id"
-              :disabled="slot.disabled"
-            >
-              <div class="flex items-center justify-between">
-                <span>{{ slot.formattedLabel }}</span>
-                <span v-if="slot.disabled" class="!text-xs !text-red-500 !font-semibold">Booked</span>
-              </div>
-            </el-option>
+              v-for="b in calendarStore.unassignedBookings"
+              :key="b.id"
+              :label="`${b.fullName} - ${b.Service?.name || 'Service'}`"
+              :value="b.id"
+            />
           </el-select>
         </div>
       </div>
 
       <template #footer>
-        <div class="flex flex-col-reverse sm:flex-row justify-end !gap-2">
-          <el-button class="!w-full sm:!w-auto !m-0" @click="handleRescheduleCancel">Cancel</el-button>
+        <div class="flex justify-end gap-2">
           <el-button 
             type="primary" 
-            color="#136cb3"
-            class="!w-full sm:!w-auto !font-semibold" 
-            :loading="savingReschedule" 
-            :disabled="!selectedSlotId" 
-            @click="confirmReschedule"
+            color="#136cb3" 
+            :loading="calendarStore.createEventLoading"
+            :disabled="!selectedBookingId" 
+            @click="confirmAddEvent"
           >
-            Confirm Reschedule
+            Confirm
           </el-button>
         </div>
       </template>
@@ -147,9 +119,11 @@ import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
 import rrulePlugin from '@fullcalendar/rrule'
 import moment from 'moment'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCalendarStore, type CalendarEvent } from '@/stores/useCalendarStore'
 import { supabase } from '@/utils/supabaseClient'
+
+import { Delete } from '@element-plus/icons-vue'
 
 export default {
   name: 'CalendarView',
@@ -157,17 +131,17 @@ export default {
     FullCalendar
   },
   setup() {
-    const store = useCalendarStore() 
-    return { store }
+    const calendarStore = useCalendarStore() 
+    return { calendarStore }
   },
   data() {
     const vm = this as any
 
     return {
+      selectedDateStr: '',
+      selectedBookingId: null,
       isMounted: false,
-      detailsDialogVisible: false,
       selectedBooking: null as any,
-      rescheduleDialogVisible: false,
       savingReschedule: false,
       pendingDropInfo: null as any,
       targetDate: '',
@@ -203,33 +177,44 @@ export default {
         events: [] as CalendarEvent[],
         firstDay: 0,
         eventClick: this.handleEventClick,
+        selectable: true,
         eventDrop: this.handleEventDrop,
         datesSet: this.handleDatesSet,
         allDaySlot: false,
         eventOverlap: true,
-        displayEventTime: true
+        displayEventTime: true,
+        dateClick: this.handleDateClick
       })
     }
   },
-  mounted() {
-    this.isMounted = true
-    this.$nextTick(() => {
-      setTimeout(() => {
-        if (this.calendarApi) {
-          this.calendarApi.updateSize()
-        }
-      }, 100)
-    })
-  },
+
   computed: {
     calendarApi(): any {
       return (this.$refs.calendarRef as any) ? (this.$refs.calendarRef as any).getApi() : null
     },
     targetDateFormatted(): string {
       return this.targetDate ? moment(this.targetDate).format('MMMM DD, YYYY') : ''
+    },
+    selectedDateFormatted(): string {
+      return this.selectedDateStr ? moment(this.selectedDateStr).format('MMMM DD, YYYY') : ''
     }
   },
   methods: {
+    /* Create Event in Database & Refresh UI */
+    async confirmAddEvent() {
+      if (!this.selectedBookingId || !this.selectedDateStr) return
+
+      const created = await this.calendarStore.createCalendarEvent(
+        this.selectedBookingId, 
+        this.selectedDateStr
+      )
+
+      if (created) {
+        const events = await this.calendarStore.refreshCurrentRange()
+        /* this.calendarOptions.events = events */
+      }
+    },
+
     async handleRefreshClick() {
       if (this.calendarApi) {
         const currentView = this.calendarApi.view
@@ -241,111 +226,57 @@ export default {
       await this.loadBookings(dateInfo.startStr, dateInfo.endStr)
     },
 
+    async handleDateClick(info: any) {
+      this.selectedDateStr = info.dateStr
+      this.selectedBookingId = null
+      this.calendarStore.dialog.createEvent = true
+    },
+
     async handleEventClick(info: any) {
       this.selectedBooking = info.event
       this.selectedSlotId = info.event.extendedProps.timeSlotId
-      this.detailsDialogVisible = true
-
-      const dateStr = info.event.extendedProps.bookingDate
-      await this.store.loadTimeSlotsForTargetDate(dateStr, info.event.id)
+      this.calendarStore.dialog.viewEvent = true
+      this.selectedDateStr = info.event.extendedProps.bookingDate
     },
 
-    async handleSlotChange(newSlotId: number | string | null) {
-      if (!this.selectedBooking || !newSlotId) return
-
-      try {
-        const { error } = await supabase
-          .from('Booking')
-          .update({ timeSlotId: newSlotId })
-          .eq('id', this.selectedBooking.id)
-
-        if (error) throw error
-
-        ElMessage.success('Booking time slot updated successfully.')
-        this.selectedBooking.setExtendedProp('timeSlotId', newSlotId)
-        await this.store.refreshCurrentRange()
-        await this.syncCalendarEvents()
-      } catch (error) {
-        console.error('Failed to update booking slot:', error)
-        ElMessage.error('Failed to update booking time slot.')
-      }
-    },
 
     async handleEventDrop(info: any) {
+      console.log(info)
       if (new Date(info.event.startStr) < new Date(new Date().setHours(0, 0, 0, 0))) {
         ElMessage.warning('Cannot move booking on past dates.')
         info.revert()
         return
       }
-      this.pendingDropInfo = info
-      this.selectedSlotId = null
-      this.targetDate = moment(info.event.start).format('YYYY-MM-DD')
-      this.rescheduleDialogVisible = true
-
-      await this.store.loadTimeSlotsForTargetDate(this.targetDate, info.event.id)
-    },
-
-    async confirmReschedule() {
-      if (!this.selectedSlotId || !this.pendingDropInfo) return
-
-      this.savingReschedule = true
-      try {
-        const { error } = await supabase
-          .from('Booking')
-          .update({
-            bookingDate: this.targetDate,
-            timeSlotId: this.selectedSlotId
-          })
-          .eq('id', this.pendingDropInfo.event.id)
-
-        if (error) throw error
-
-        ElMessage.success('Booking rescheduled successfully.')
-        this.rescheduleDialogVisible = false
-        this.pendingDropInfo = null
-        await this.store.refreshCurrentRange()
-        await this.syncCalendarEvents()
-      } catch (error) {
-        console.error('Reschedule failed:', error)
-        ElMessage.error('Failed to reschedule booking.')
-        this.handleRescheduleCancel()
-      } finally {
-        this.savingReschedule = false
-      }
-    },
-
-    handleRescheduleCancel() {
-      if (this.pendingDropInfo) {
-        this.pendingDropInfo.revert()
-        this.pendingDropInfo = null
-      }
-      this.rescheduleDialogVisible = false
-      this.targetDate = ''
+      ElMessageBox.confirm(`Are you sure you want to move ${info.event.extendedProps.title}?`, 'Warning', {
+        confirmButtonText: 'OK',
+        cancelButtonText: 'Cancel',
+        type: 'warning',
+        icon: markRaw(Delete),
+      }).then(() => {
+        this.pendingDropInfo = info
+        this.selectedSlotId = null
+        this.targetDate = moment(info.event.start).format('YYYY-MM-DD')
+      })
+      .catch(() => {
+        this.updateCalendarSource()
+      })
+      .finally(() => { })
     },
 
     async loadBookings(startDate: string, endDate: string) {
-      const events = await this.store.fetchCalendarEvents(startDate, endDate)
-      this.updateCalendarSource(events)
+      const events = await this.calendarStore.fetchCalendarEvents(startDate, endDate)
+      this.updateCalendarSource()
     },
 
-    async syncCalendarEvents() {
-      if (this.calendarApi) {
-        this.updateCalendarSource(this.store.bookings)
-      }
-    },
-
-    updateCalendarSource(events: CalendarEvent[]) {
+    updateCalendarSource() {
       if (this.calendarApi) {
         this.calendarApi.removeAllEventSources()
-        this.calendarApi.addEventSource(events)
+        this.calendarApi.addEventSource(this.calendarStore.bookings)
       } else {
-        this.calendarOptions.events = events
+        this.calendarOptions.events = this.calendarStore.bookings
       }
     },
 
-    formatBookingTime(dateString: string | Date) {
-      return dateString ? moment(dateString).format('MMMM DD, YYYY') : ''
-    },
 
     handleTodayClick() { this.calendarApi?.today() },
     handlePrevClick() { this.calendarApi?.prev() },
@@ -354,7 +285,17 @@ export default {
     handleWeekClick() { this.calendarApi?.changeView('timeGridWeek') },
     handleDayClick() { this.calendarApi?.changeView('timeGridDay') },
     handleListClick() { this.calendarApi?.changeView('listMonth') }
-  }
+  },
+  mounted() {
+    this.isMounted = true
+    this.$nextTick(() => {
+      setTimeout(() => {
+        if (this.calendarApi) {
+          this.calendarApi.updateSize()
+        }
+      }, 100)
+    })
+  },
 }
 </script>
 
@@ -364,7 +305,7 @@ export default {
   width: 100% !important;
 }
 
-:deep(.fc-view-harness) {
+:deep(.fc-view-harness) { 
   min-height: 500px !important;
 }
 
