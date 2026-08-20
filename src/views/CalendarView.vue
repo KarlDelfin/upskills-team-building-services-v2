@@ -7,7 +7,6 @@
       class="w-full min-h-[550px] relative"
     >
       <FullCalendar 
-        v-if="isMounted"
         ref="calendarRef" 
         :options="calendarOptions as any" 
       />
@@ -16,12 +15,12 @@
     <!-- VIEW BOOKING -->
     <el-dialog 
       v-model="calendarStore.dialog.viewEvent" 
-      title="Booking Details" 
+      :title="calendarStore.title" 
       class="!w-[92vw] sm:!w-[440px] !max-w-[440px]" 
       center 
       destroy-on-close
     >
-      <div v-if="selectedBooking" v-loading="calendarStore.loading.slot" class="!space-y-4 !text-slate-700">
+      <div v-if="selectedBooking" v-loading="calendarStore.loading.viewEvent" class="!space-y-4 !text-slate-700">
         <div class="flex items-center justify-between !border-b !border-slate-100 !pb-3">
           <span class="!font-semibold !text-slate-500 !text-sm">Status</span>
           <span 
@@ -37,9 +36,7 @@
           <span class="sm:col-span-2 !font-bold !text-slate-800 !break-words">{{ selectedBooking.title }}</span>
 
           <span class="!text-slate-500 !font-medium">Scheduled Date:</span>
-          <span class="sm:col-span-2 !font-semibold !text-slate-700 flex flex-col !gap-2 !w-full"> <div>{{ selectedBooking.start }}</div> </span>
-          <span class="!text-slate-500 !font-medium">Time:</span>
-          <span class="sm:col-span-2 !font-semibold !text-slate-700 flex flex-col !gap-2 !w-full"> <div>{{ selectedBooking.extendedProps.slotTime }}</div> </span> 
+          <span class="sm:col-span-2 !font-semibold !text-slate-700 flex flex-col !gap-2 !w-full"> <div>{{ selectedDateFormatted }}</div> </span>
 
           <span class="!text-slate-500 !font-medium">Email:</span>
           <span class="sm:col-span-2 !text-slate-700 !break-all">{{ selectedBooking.extendedProps.email || 'N/A' }}</span>
@@ -55,8 +52,9 @@
       </div>
 
       <template #footer>
-        <div class="flex justify-end !gap-2">
+        <div class="flex justify-end">
           <el-button class="!w-full sm:!w-auto" @click="calendarStore.dialog.viewEvent = false">Close</el-button>
+          <el-button type="danger" class="!w-full sm:!w-auto" @click="handleDeleteEvent">Delete</el-button>
         </div>
       </template>
     </el-dialog>
@@ -64,7 +62,7 @@
     <!-- SCHEDULE BOOKING -->
     <el-dialog 
       v-model="calendarStore.dialog.createEvent"
-      title="Schedule Booking to Calendar" 
+      :title="calendarStore.title" 
       class="!w-[92vw] sm:!w-[440px] !max-w-[440px]" 
       center
     >
@@ -81,12 +79,13 @@
             class="!w-full"
             size="large"
             filterable
+            @change="handleSelectBooking"
           >
             <el-option
-              v-for="b in calendarStore.unassignedBookings"
-              :key="b.id"
-              :label="`${b.fullName} - ${b.Service?.name || 'Service'}`"
-              :value="b.id"
+              v-for="unassignedBooking in calendarStore.unassignedBookings"
+              :key="unassignedBooking.id"
+              :label="`${unassignedBooking.fullName} - ${unassignedBooking.Service?.name || 'Service'}`"
+              :value="unassignedBooking.id"
             />
           </el-select>
         </div>
@@ -97,9 +96,9 @@
           <el-button 
             type="primary" 
             color="#136cb3" 
-            :loading="calendarStore.createEventLoading"
+            :loading="calendarStore.loading.createEvent"
             :disabled="!selectedBookingId" 
-            @click="confirmAddEvent"
+            @click="handleConfirm"
           >
             Confirm
           </el-button>
@@ -111,19 +110,19 @@
 
 <script lang="ts">
 
-import { markRaw } from 'vue' // <-- Add markRaw import
+import { markRaw } from 'vue'
 import FullCalendar from '@fullcalendar/vue3'
 import dayGridPlugin from '@fullcalendar/daygrid'
 import interactionPlugin from '@fullcalendar/interaction'
 import timeGridPlugin from '@fullcalendar/timegrid'
 import listPlugin from '@fullcalendar/list'
 import rrulePlugin from '@fullcalendar/rrule'
+
 import moment from 'moment'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { useCalendarStore, type CalendarEvent } from '@/stores/useCalendarStore'
-import { supabase } from '@/utils/supabaseClient'
 
-import { Delete } from '@element-plus/icons-vue'
+import { Edit } from '@element-plus/icons-vue'
 
 export default {
   name: 'CalendarView',
@@ -139,15 +138,12 @@ export default {
 
     return {
       selectedDateStr: '',
-      selectedBookingId: null,
-      isMounted: false,
+      selectedBookingId: '' as string,
       selectedBooking: null as any,
       savingReschedule: false,
-      pendingDropInfo: null as any,
       targetDate: '',
       selectedSlotId: null as number | string | null,
 
-      // Wrap calendarOptions inside markRaw()
       calendarOptions: markRaw({
         height: '650px',
         contentHeight: 600,
@@ -192,70 +188,71 @@ export default {
     calendarApi(): any {
       return (this.$refs.calendarRef as any) ? (this.$refs.calendarRef as any).getApi() : null
     },
-    targetDateFormatted(): string {
-      return this.targetDate ? moment(this.targetDate).format('MMMM DD, YYYY') : ''
-    },
     selectedDateFormatted(): string {
       return this.selectedDateStr ? moment(this.selectedDateStr).format('MMMM DD, YYYY') : ''
     }
   },
   methods: {
-    /* Create Event in Database & Refresh UI */
-    async confirmAddEvent() {
-      if (!this.selectedBookingId || !this.selectedDateStr) return
-
-      const created = await this.calendarStore.createCalendarEvent(
-        this.selectedBookingId, 
-        this.selectedDateStr
-      )
-
-      if (created) {
-        const events = await this.calendarStore.refreshCurrentRange()
-        /* this.calendarOptions.events = events */
-      }
-    },
-
+    /* REFRESH EVENT */
     async handleRefreshClick() {
       if (this.calendarApi) {
         const currentView = this.calendarApi.view
-        await this.loadBookings(currentView.activeStart.toISOString(), currentView.activeEnd.toISOString())
+        await this.loadEvents(currentView.activeStart.toISOString(), currentView.activeEnd.toISOString())
       }
     },
-
-    async handleDatesSet(dateInfo: any) {
-      await this.loadBookings(dateInfo.startStr, dateInfo.endStr)
-    },
-
+   
+    /* CLICK DATE */
     async handleDateClick(info: any) {
+      if (new Date(info.dateStr) < new Date(new Date().setHours(0, 0, 0, 0))) {
+        ElMessage.warning('Cannot schedule on past dates.')
+        return
+      }
+
+      const targetDate = moment(info.dateStr).format('YYYY-MM-DD')
       this.selectedDateStr = info.dateStr
-      this.selectedBookingId = null
-      this.calendarStore.dialog.createEvent = true
+      
+      this.calendarStore.calendarEventForm.bookingId = this.selectedBookingId
+      this.calendarStore.calendarEventForm.eventDate = targetDate
+
+      this.calendarStore.formController('Schedule Booking to Calendar', {})
     },
 
+    /* SELECT BOOKING */
+    handleSelectBooking(bookingId: string) {
+      this.calendarStore.calendarEventForm.bookingId = bookingId
+    },
+
+    /* CLICK EVENT */
     async handleEventClick(info: any) {
       this.selectedBooking = info.event
       this.selectedSlotId = info.event.extendedProps.timeSlotId
-      this.calendarStore.dialog.viewEvent = true
       this.selectedDateStr = info.event.extendedProps.bookingDate
+
+      this.calendarStore.dialog.viewEvent = true
+      this.calendarStore.title = 'Booking Event Details'
+      this.calendarStore.calendarEventForm.id = info.event.extendedProps.eventId
     },
 
-
+    /* MOVE EVENT */
     async handleEventDrop(info: any) {
-      console.log(info)
       if (new Date(info.event.startStr) < new Date(new Date().setHours(0, 0, 0, 0))) {
         ElMessage.warning('Cannot move booking on past dates.')
         info.revert()
         return
       }
-      ElMessageBox.confirm(`Are you sure you want to move ${info.event.extendedProps.title}?`, 'Warning', {
+      ElMessageBox.confirm(`Are you sure you want to move ${info.event.extendedProps.title} to ${moment(info.event.startStr).format('LL')}?`, 'Warning', {
         confirmButtonText: 'OK',
         cancelButtonText: 'Cancel',
         type: 'warning',
-        icon: markRaw(Delete),
+        icon: markRaw(Edit),
       }).then(() => {
-        this.pendingDropInfo = info
-        this.selectedSlotId = null
-        this.targetDate = moment(info.event.start).format('YYYY-MM-DD')
+        const targetDate = moment(info.event.start).format('YYYY-MM-DD')
+        const eventId = info.event.extendedProps.eventId
+
+        this.calendarStore.calendarEventForm.eventDate = targetDate
+        this.calendarStore.calendarEventForm.id = eventId
+        this.calendarStore.title = 'Reschedule Booking Event Date'
+        this.calendarStore.submitForm()
       })
       .catch(() => {
         this.updateCalendarSource()
@@ -263,18 +260,36 @@ export default {
       .finally(() => { })
     },
 
-    async loadBookings(startDate: string, endDate: string) {
+    async handleDeleteEvent() {
+      await this.calendarStore.handleDeleteEvent()
+      this.handleRefreshClick()
+    },
+
+    /* LOAD EVENTS DIRECTLY ON MOUNT */
+    async handleDatesSet(dateInfo: any) {
+      await this.loadEvents(dateInfo.startStr, dateInfo.endStr)
+    },
+
+    /* LOAD EVENTS */
+    async loadEvents(startDate: string, endDate: string) {
       const events = await this.calendarStore.fetchCalendarEvents(startDate, endDate)
       this.updateCalendarSource()
     },
-
+   
+    /* UPDATE CALENDAR STATIC DATES */
     updateCalendarSource() {
       if (this.calendarApi) {
         this.calendarApi.removeAllEventSources()
-        this.calendarApi.addEventSource(this.calendarStore.bookings)
+        this.calendarApi.addEventSource(this.calendarStore.events)
       } else {
-        this.calendarOptions.events = this.calendarStore.bookings
+        this.calendarOptions.events = this.calendarStore.events
       }
+    },
+
+    handleConfirm() {
+      this.calendarStore.submitForm()
+      this.handleRefreshClick()
+      this.selectedBookingId = ''
     },
 
 
@@ -287,14 +302,7 @@ export default {
     handleListClick() { this.calendarApi?.changeView('listMonth') }
   },
   mounted() {
-    this.isMounted = true
-    this.$nextTick(() => {
-      setTimeout(() => {
-        if (this.calendarApi) {
-          this.calendarApi.updateSize()
-        }
-      }, 100)
-    })
+    
   },
 }
 </script>
@@ -314,4 +322,10 @@ export default {
   border: none !important;
   cursor: pointer;
 }
+
+:deep(.fc-day-past) {
+  background-color: #f0f0f0 !important; /* Light gray for past dates */
+}
+
+:deep(.fc-event-time) { display: none !important; }
 </style>

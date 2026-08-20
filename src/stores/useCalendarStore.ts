@@ -1,7 +1,10 @@
 import { defineStore } from 'pinia'
 import { supabase } from '@/utils/supabaseClient'
-import { ElMessage } from 'element-plus'
+import { ElMessage, ElMessageBox } from 'element-plus'
 import moment from 'moment'
+import { markRaw } from 'vue'
+
+import { Delete } from '@element-plus/icons-vue'
 
 export interface CalendarEvent {
   id: number | string,
@@ -21,6 +24,13 @@ export interface CalendarEvent {
   }
 }
 
+export interface CalendarEventForm {
+  id: string,
+  bookingId: string | any,
+  eventDate: string,
+  dateTimeCreated: string
+}
+
 export interface TimeSlot {
   id: number | string,
   slotTime: string,
@@ -30,8 +40,10 @@ export interface TimeSlot {
 
 export const useCalendarStore = defineStore('calendar', {
   state: () => ({
-   
-    bookings: [] as CalendarEvent[],
+    title: '',
+    calendarEventForm: {} as CalendarEventForm,
+
+    events: [] as CalendarEvent[],
     lastStartDate: null as string | null,
     lastEndDate: null as string | null,
 
@@ -84,7 +96,7 @@ export const useCalendarStore = defineStore('calendar', {
         const { data, error } = await query
         if (error) throw error
 
-        this.bookings = data.map((event: any) => {
+          this.events = data.map((event: any) => {
           const booking = event.Booking
           const dateOnly = moment(event.eventDate).format('YYYY-MM-DD')
           const timeOnly = booking?.TimeSlot?.slotTime || '00:00:00'
@@ -123,87 +135,137 @@ export const useCalendarStore = defineStore('calendar', {
     },
 
     async fetchUnassignedBookings() {
-      const { data, error } = await supabase
-        .from('Booking')
-        .select('*')
+      try {
+        const { data: existingEvents, error: eventErr } = await supabase.from('Event').select('bookingId')
+        if (eventErr) throw eventErr
 
-        if(error) throw error
+        const assignedBookingIds = (existingEvents || []).map((e: any) => e.bookingId)
+
+        let query = supabase
+          .from('Booking')
+          .select(`*, Service(name)`)
+
+        if (assignedBookingIds.length > 0) {
+          query = query.not('id', 'in', `(${assignedBookingIds.join(',')})`)
+        }
+
+        const { data, error } = await query
+        if (error) throw error
 
         this.unassignedBookings = data || []
-    },
-
-    /* REFRESH CURRENT DATE RANGE (GET ONLY) */
-    async refreshCurrentRange() {
-      if (this.lastStartDate && this.lastEndDate) {
-        return await this.fetchCalendarEvents(this.lastStartDate, this.lastEndDate)
-      }
-      return await this.fetchCalendarEvents()
-    },
-
-    /* GET / FETCH TIME SLOTS & DISABLE TAKEN ONES FOR TARGET DATE */
-    async loadTimeSlotsForTargetDate(dateStr: string, currentBookingId: number | string) {
-      this.loading.slot = true
-      try {
-        const { data: slots, error: slotsErr } = await supabase
-          .from('TimeSlot')
-          .select('*')
-          .order('slotTime', { ascending: true })
-
-        if (slotsErr) throw slotsErr
-
-        const { data: existingBookings, error: bookingsErr } = await supabase
-          .from('Booking')
-          .select('id, timeSlotId')
-          .eq('bookingDate', dateStr)
-
-        if (bookingsErr) throw bookingsErr
-
-        const takenSlotIds = (existingBookings || [])
-          .filter((b: any) => String(b.id) !== String(currentBookingId))
-          .map((b: any) => b.timeSlotId)
-
-        this.availableSlots = (slots || []).map((slot: any) => {
-          const isTaken = takenSlotIds.includes(slot.id)
-          const formattedTime = moment(slot.slotTime, 'HH:mm:ss').format('h:mm A')
-
-          return {
-            ...slot,
-            formattedLabel: formattedTime,
-            disabled: isTaken
-          }
-        })
       } catch (error) {
-        console.error('Failed to load slots:', error)
-        ElMessage.error('Could not load time slots.')
-      } finally {
-        this.loading.slot = false
+        console.error('Error fetching unassigned bookings:', error)
       }
     },
 
-    /* CREATE EVENT RECORD IN DB */
-    async createCalendarEvent(bookingId: number | string, dateStr: string) {
-      this.createEventLoading = true
+    formController(action: string, data: any) {
+      if(action === 'Schedule Booking to Calendar') {
+        this.title = action
+        this.dialog.createEvent = true
+        this.fetchUnassignedBookings()
+      }
+    },
+
+    async submitForm() {
+      /* SCHEDULE BOOKING */
+      if(this.title === 'Schedule Booking to Calendar') {
+        try{
+          this.loading.createEvent = true
+
+          const payload = {
+            bookingId: this.calendarEventForm.bookingId,
+            eventDate: this.calendarEventForm.eventDate
+          }
+
+          const { data, error} = await supabase
+            .from('Event')
+            .insert(payload)
+
+          if(error) throw error
+
+          ElMessage.success('Event scheduled successfully.')
+          this.clear()
+        }
+        catch(error) {
+          console.log(error)
+          ElMessage.error('Failed to schedule event!')
+        }
+        finally {
+          this.loading.createEvent = false
+        }
+      }
+
+      /* RESCHEDULE BOOKING EVENT DATE */
+      if(this.title === 'Reschedule Booking Event Date') {
+        try{
+          this.loading.calendar = true
+
+          const payload = {
+            eventDate: this.calendarEventForm.eventDate
+          }
+
+          const { data, error } = await supabase
+            .from('Event')
+            .update(payload)
+            .eq('id', this.calendarEventForm.id)
+
+          if(error) throw error
+
+          ElMessage.success('Event rescheduled successfully.')
+          
+          this.clear()
+
+        } catch(error) {
+          console.log(error)
+          ElMessage.error('Failed to reschedule event!')
+        } finally {
+          this.loading.calendar = false
+        }
+      }
+    },
+
+    async handleDeleteEvent() {
       try {
-        const { data, error } = await supabase
+        await ElMessageBox.confirm('Are you sure you want to delete this event?', 'Warning', {
+          confirmButtonText: 'OK',
+          cancelButtonText: 'Cancel',
+          type: 'warning',
+          icon: markRaw(Delete),
+        })
+
+        this.loading.calendar = true
+
+        const { error } = await supabase
           .from('Event')
-          .insert({
-            bookingId: bookingId,
-            eventDate: dateStr,
-            dateTimeCreated: new Date().toISOString()
-          })
-          .select()
-          .single()
+          .delete()
+          .eq('id', this.calendarEventForm.id)
 
         if (error) throw error
-        ElMessage.success('Event added to calendar successfully!')
-        return data
+
+        ElMessage.success('Event deleted successfully.')
+
+        this.clear()
+
       } catch (error) {
-        console.error('Error creating event:', error)
-        ElMessage.error('Failed to add event to calendar.')
-        return null
+          console.error(error)
       } finally {
-        this.createEventLoading = false
+        this.loading.calendar = false
       }
     },
+
+    clear() {
+      this.title = ''
+      this.dialog.createEvent = false
+      this.dialog.viewEvent = false
+      
+      Object.assign(this.calendarEventForm, {
+        id: '',
+        bookingId: '',
+        eventDate: '',
+        dateTimeCreated: '',
+      })
+    }
+
+
   }
 })
