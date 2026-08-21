@@ -3,7 +3,7 @@
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 class="!text-xl !font-bold !m-0">Status Management</h2>
+                    <h2 class="!text-xl !font-bold !m-0">{{ $route.name }} Management</h2>
                     <p class="!text-xs !m-0 !mt-1">Configure and organize operational statuses for client bookings</p>
                 </div>
             </div>
@@ -14,7 +14,7 @@
                 <el-input
                     v-model="statusStore.search"
                     @input="statusStore.searchBookingStatus" 
-                    placeholder="Search status by name..." 
+                    placeholder="Search status..." 
                     :prefix-icon="Search"
                     clearable
                 />

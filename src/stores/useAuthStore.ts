@@ -6,7 +6,7 @@ import router from '../router'
 export const useAuthStore = defineStore('auth', {
   state: () => ({
     user: null as any,
-    loading: false as boolean,
+    loading: true as boolean, // Start true so app waits for init
   }),
 
   getters: {
@@ -24,7 +24,6 @@ export const useAuthStore = defineStore('auth', {
         this.loading = true
 
         const { data: { session }, error: sessionError } = await supabase.auth.getSession()
-
         if (sessionError) throw sessionError
 
         if (!session?.user?.email) {
@@ -34,6 +33,7 @@ export const useAuthStore = defineStore('auth', {
 
         const userEmail = session.user.email
 
+        // Check if email is whitelisted in database
         const { data, error } = await supabase
           .from('User')
           .select('email')
@@ -49,9 +49,9 @@ export const useAuthStore = defineStore('auth', {
           return
         }
 
+        // Set verified user state
         this.setUser(session.user)
-
-      } catch (error: any) {
+      } catch (error) {
         console.error('Auth initialization error:', error)
         this.setUser(null)
       } finally {
@@ -63,34 +63,33 @@ export const useAuthStore = defineStore('auth', {
       try {
         this.loading = true
         await supabase.auth.signOut()
-        this.user = null
+        this.setUser(null)
         ElMessage.info('Logged out securely.')
         router.push('/admin')
       } catch (error: any) {
-        ElMessage.error(error.message || 'Logout failed.')
+        ElMessage.error(error?.message || 'Logout failed.')
       } finally {
         this.loading = false
       }
     },
 
     async handleGoogleLogin() {
-        try {
-            this.loading = true
-            
-            const REDIRECTION_URL = `${window.location.origin}/admin/booking`
+      try {
+        this.loading = true
+        const REDIRECTION_URL = `${window.location.origin}/admin/booking`
 
-            const { error } = await supabase.auth.signInWithOAuth({
-            provider: 'google',
-            options: { 
-                redirectTo: REDIRECTION_URL 
-            }
-            })
+        const { error } = await supabase.auth.signInWithOAuth({
+          provider: 'google',
+          options: { 
+            redirectTo: REDIRECTION_URL 
+          }
+        })
 
-            if (error) throw error
-        } catch (error: any) {
-            ElMessage.error(`OAuth Initialization failure: ${error.message || error}`)
-            this.loading = false
-        }
+        if (error) throw error
+      } catch (error: any) {
+        ElMessage.error(`OAuth Initialization failure: ${error.message || error}`)
+        this.loading = false
+      }
     },
   },
 })

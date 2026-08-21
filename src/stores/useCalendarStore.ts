@@ -3,6 +3,7 @@ import { supabase } from '@/utils/supabaseClient'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import moment from 'moment'
 import { markRaw } from 'vue'
+import debounce from 'lodash/debounce';
 
 import { Delete } from '@element-plus/icons-vue'
 
@@ -38,10 +39,26 @@ export interface TimeSlot {
   disabled?: boolean,
 }
 
+export interface UnassignedBookingPagination {
+  currentPage: number,
+  elementsPerPage: number,
+  totalElements: number,
+}
+
 export const useCalendarStore = defineStore('calendar', {
   state: () => ({
     title: '',
+    search: {
+      unassignedBooking: ''
+    },
+    
     calendarEventForm: {} as CalendarEventForm,
+
+    unassignedBookingPagination: {
+        currentPage: 1,
+        elementsPerPage: 5,
+        totalElements: 0,
+    } as UnassignedBookingPagination,
 
     events: [] as CalendarEvent[],
     lastStartDate: null as string | null,
@@ -56,6 +73,7 @@ export const useCalendarStore = defineStore('calendar', {
       createEvent: false,
       viewEvent: false,
       slot: false,
+      unassignedBooking: false
     },
 
     dialog: {
@@ -134,39 +152,69 @@ export const useCalendarStore = defineStore('calendar', {
       }
     },
 
+    /* DEBEOUNCE SEARCH */
+    async searchUnassignedBookings(query: string) {
+      await this.fetchUnassignedBookings()
+    },
+
+    /* FETCH UNASSIGNED BOOKINGS */
     async fetchUnassignedBookings() {
       try {
-        const { data: existingEvents, error: eventErr } = await supabase.from('Event').select('bookingId')
+        this.loading.unassignedBooking = true
+
+        const { data: existingEvents, error: eventErr } = await supabase
+          .from('Event')
+          .select('bookingId')
+          
         if (eventErr) throw eventErr
 
-        const assignedBookingIds = (existingEvents || []).map((e: any) => e.bookingId)
+        const assignedBookingIds = (existingEvents || [])
+          .map((e: any) => e.bookingId)
+          .filter(Boolean)
+
+        const limit = this.unassignedBookingPagination.elementsPerPage
+        const currentPage = this.unassignedBookingPagination.currentPage
+        const from = (currentPage - 1) * limit
+        const to = from + limit - 1
 
         let query = supabase
           .from('Booking')
-          .select(`*, Service(name)`)
+          .select(`*, Service(name)`, { count: 'exact' })
 
         if (assignedBookingIds.length > 0) {
           query = query.not('id', 'in', `(${assignedBookingIds.join(',')})`)
         }
 
-        const { data, error } = await query
+        const searchTerm = this.search.unassignedBooking.trim()
+        if (searchTerm) {
+          const val = `%${searchTerm}%`
+          query = query.or(`fullName.ilike.${val},phone.ilike.${val},email.ilike.${val}`)
+        }
+
+        query = query.order('dateTimeCreated', { ascending: false }).range(from, to)
+
+        const { data, error, count } = await query
         if (error) throw error
 
+        this.unassignedBookingPagination.totalElements = count || 0
         this.unassignedBookings = data || []
       } catch (error) {
-        console.error('Error fetching unassigned bookings:', error)
+        console.error(error)
+        ElMessage.error('Failed to fetch bookings.')
+      } finally {
+        this.loading.unassignedBooking = false
       }
     },
 
-    formController(action: string, data: any) {
+    async formController(action: string) {
       if(action === 'Schedule Booking to Calendar') {
         this.title = action
         this.dialog.createEvent = true
-        this.fetchUnassignedBookings()
+        await this.fetchUnassignedBookings()
       }
     },
 
-    async submitForm() {
+    async submitForm(): Promise<boolean> {
       /* SCHEDULE BOOKING */
       if(this.title === 'Schedule Booking to Calendar') {
         try{
@@ -177,7 +225,7 @@ export const useCalendarStore = defineStore('calendar', {
             eventDate: this.calendarEventForm.eventDate
           }
 
-          const { data, error} = await supabase
+          const { error } = await supabase
             .from('Event')
             .insert(payload)
 
@@ -185,10 +233,12 @@ export const useCalendarStore = defineStore('calendar', {
 
           ElMessage.success('Event scheduled successfully.')
           this.clear()
+          return true
         }
         catch(error) {
           console.log(error)
-          ElMessage.error('Failed to schedule event!')
+          ElMessage.error('Failed to schedule event.')
+          return false
         }
         finally {
           this.loading.createEvent = false
@@ -204,7 +254,7 @@ export const useCalendarStore = defineStore('calendar', {
             eventDate: this.calendarEventForm.eventDate
           }
 
-          const { data, error } = await supabase
+          const { error } = await supabase
             .from('Event')
             .update(payload)
             .eq('id', this.calendarEventForm.id)
@@ -212,16 +262,18 @@ export const useCalendarStore = defineStore('calendar', {
           if(error) throw error
 
           ElMessage.success('Event rescheduled successfully.')
-          
           this.clear()
-
+          return true
         } catch(error) {
           console.log(error)
-          ElMessage.error('Failed to reschedule event!')
+          ElMessage.error('Failed to reschedule event.')
+          return false
         } finally {
           this.loading.calendar = false
         }
       }
+
+      return false
     },
 
     async handleDeleteEvent() {
@@ -248,6 +300,7 @@ export const useCalendarStore = defineStore('calendar', {
 
       } catch (error) {
           console.error(error)
+          ElMessage.success('Failed to delete event.')
       } finally {
         this.loading.calendar = false
       }

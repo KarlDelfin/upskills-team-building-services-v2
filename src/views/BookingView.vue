@@ -2,7 +2,7 @@
   <div class="flex flex-col xl:flex-row !w-full !gap-4">
     <div class="!space-y-6 !w-full xl:!w-[80%] 2xl:!w-[83%]">
       <div class="grid grid-cols-1 sm:grid-cols-2 !gap-4">
-        <el-card shadow="hover" class="!rounded-lg !border-slate-200">
+        <el-card class="!rounded-lg !border-slate-200">
           <template #header>
             <span class="!text-slate-500 !font-semibold !text-sm !uppercase !tracking-wider">Total Bookings</span>
           </template>
@@ -11,7 +11,7 @@
           </div>
         </el-card>
 
-        <el-card shadow="hover" class="!rounded-lg !border-slate-200">
+        <el-card class="!rounded-lg !border-slate-200">
           <template #header>
             <span class="!text-slate-500 !font-semibold !text-sm !uppercase !tracking-wider">Pending Bookings</span>
           </template>
@@ -21,7 +21,7 @@
         </el-card>
       </div>
 
-       <el-card class="shadow-sm border-0 rounded-xl overflow-hidden">
+       <el-card class="border-0 rounded-xl overflow-hidden">
           <template #header>
               <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                   <div>
@@ -182,10 +182,10 @@
     </div>
 
     <!-- UPCOMING BOOKING -->
-    <div 
+    <el-card 
       v-loading="bookingStore.loading" 
       element-loading-text="Loading upcoming events..."
-      class="!w-full xl:!w-[20%] 2xl:!w-[17%] !rounded-xl !bg-white !p-4 sm:!p-5 !border !border-slate-200 flex flex-col !gap-4 !shadow-sm !h-fit"
+      class="!w-full xl:!w-[20%] 2xl:!w-[17%] !rounded-lg !bg-white !p-4 sm:!p-5 !border !border-slate-200 flex flex-col !gap-4 !h-fit"
     >
       <div class="flex items-center justify-between !border-b !border-slate-100 !pb-3">
         <h3 class="!font-bold !text-slate-800 !text-sm !tracking-wide !uppercase !m-0">Upcoming Bookings</h3>
@@ -223,7 +223,7 @@
           <el-empty description="No bookings yet." :image-size="60"/>
         </div>
       </div>
-    </div>
+    </el-card>
   </div>
 
   <!-- BOOKING FORM DIALOG -->

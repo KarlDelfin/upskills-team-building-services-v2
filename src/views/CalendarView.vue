@@ -72,14 +72,18 @@
         </p>
 
         <div class="!space-y-2">
-           <label class="block !text-sm !font-medium !text-slate-700">Booking:</label>
+          <label class="block !text-sm !font-medium !text-slate-700">Booking:</label>
           <el-select 
             v-model="selectedBookingId" 
             placeholder="Select a booking" 
             class="!w-full"
             size="large"
             filterable
+            remote
+            :remote-method="calendarStore.searchUnassignedBookings"
             @change="handleSelectBooking"
+            :loading="calendarStore.loading.unassignedBooking"
+            loading-text="Fetching bookings, please wait..."
           >
             <el-option
               v-for="unassignedBooking in calendarStore.unassignedBookings"
@@ -142,7 +146,6 @@ export default {
       selectedBooking: null as any,
       savingReschedule: false,
       targetDate: '',
-      selectedSlotId: null as number | string | null,
 
       calendarOptions: markRaw({
         height: '650px',
@@ -193,13 +196,7 @@ export default {
     }
   },
   methods: {
-    /* REFRESH EVENT */
-    async handleRefreshClick() {
-      if (this.calendarApi) {
-        const currentView = this.calendarApi.view
-        await this.loadEvents(currentView.activeStart.toISOString(), currentView.activeEnd.toISOString())
-      }
-    },
+  
    
     /* CLICK DATE */
     async handleDateClick(info: any) {
@@ -214,7 +211,7 @@ export default {
       this.calendarStore.calendarEventForm.bookingId = this.selectedBookingId
       this.calendarStore.calendarEventForm.eventDate = targetDate
 
-      this.calendarStore.formController('Schedule Booking to Calendar', {})
+      this.calendarStore.formController('Schedule Booking to Calendar')
     },
 
     /* SELECT BOOKING */
@@ -225,7 +222,6 @@ export default {
     /* CLICK EVENT */
     async handleEventClick(info: any) {
       this.selectedBooking = info.event
-      this.selectedSlotId = info.event.extendedProps.timeSlotId
       this.selectedDateStr = info.event.extendedProps.bookingDate
 
       this.calendarStore.dialog.viewEvent = true
@@ -270,6 +266,14 @@ export default {
       await this.loadEvents(dateInfo.startStr, dateInfo.endStr)
     },
 
+    /* REFRESH EVENT */
+    async handleRefreshClick() {
+      if (this.calendarApi) {
+        const currentView = this.calendarApi.view
+        await this.loadEvents(currentView.activeStart.toISOString(), currentView.activeEnd.toISOString())
+      }
+    },
+
     /* LOAD EVENTS */
     async loadEvents(startDate: string, endDate: string) {
       const events = await this.calendarStore.fetchCalendarEvents(startDate, endDate)
@@ -286,9 +290,11 @@ export default {
       }
     },
 
-    handleConfirm() {
-      this.calendarStore.submitForm()
-      this.handleRefreshClick()
+    async handleConfirm() {
+      const ok = this.calendarStore.submitForm()
+      if(await ok) {
+        await this.handleRefreshClick()
+      }
       this.selectedBookingId = ''
     },
 
@@ -300,9 +306,6 @@ export default {
     handleWeekClick() { this.calendarApi?.changeView('timeGridWeek') },
     handleDayClick() { this.calendarApi?.changeView('timeGridDay') },
     handleListClick() { this.calendarApi?.changeView('listMonth') }
-  },
-  mounted() {
-    
   },
 }
 </script>

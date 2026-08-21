@@ -3,7 +3,7 @@
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                  <h2 class="!text-xl !font-bold !m-0">Services</h2>
+                  <h2 class="!text-xl !font-bold !m-0">{{ $route.name }} Management</h2>
                   <p class="!text-xs !m-0 !mt-1">Manage and offer high-impact upskilling programs and team-building workshops</p>
                 </div>
             </div>
@@ -14,7 +14,7 @@
                 <el-input
                     v-model="serviceStore.search"
                     @input="serviceStore.searchService" 
-                    placeholder="Search time slot by name..." 
+                    placeholder="Search service..." 
                     :prefix-icon="Search"
                     clearable
                 />

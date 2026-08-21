@@ -3,7 +3,7 @@
         <template #header>
             <div class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
                 <div>
-                    <h2 class="!text-xl !font-bold !m-0">Time Slot Management</h2>
+                    <h2 class="!text-xl !font-bold !m-0">{{ $route.name }} Management</h2>
                     <p class="!text-xs !m-0 !mt-1">Configure available daily time schedules for client bookings</p>
                 </div>
             </div>
